@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BikeRoute Tracker & Bryton 420 Analytics</title>
+  
+  <!-- FontAwesome Icons & Google Fonts -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  
+  <!-- App Stylesheet -->
+  <link rel="stylesheet" href="./styles/main.css">
+</head>
+<body>
+
+  <!-- ==========================================================================
+       HEADER NAVBAR
+       ========================================================================== -->
+  <header class="app-header">
+    <div class="brand-logo">
+      <i class="fa-solid fa-bicycle"></i>
+      <div class="brand-title">BikeRoute <span>Analytics</span></div>
+      <div class="device-badge">
+        <i class="fa-solid fa-microchip"></i> Bryton Rider 420
+      </div>
+    </div>
+
+    <nav class="nav-tabs">
+      <button class="nav-btn active" data-tab="explorer">
+        <i class="fa-solid fa-route"></i> Esplora & Pianifica
+      </button>
+      <button class="nav-btn" data-tab="analysis">
+        <i class="fa-solid fa-chart-line"></i> Analisi Bryton USB
+      </button>
+      <button class="nav-btn" data-tab="strava">
+        <i class="fa-brands fa-strava"></i> Strava Cloud
+      </button>
+    </nav>
+
+    <div class="header-actions">
+      <button id="btnExportGpx" class="btn btn-primary" title="Scarica file GPX per il Bryton 420">
+        <i class="fa-solid fa-download"></i> Export .GPX
+      </button>
+      <button id="btnQuickUpload" class="btn btn-secondary">
+        <i class="fa-solid fa-file-import"></i> Carica .FIT
+      </button>
+    </div>
+  </header>
+
+  <!-- ==========================================================================
+       MAIN LAYOUT (SIDEBAR + MAP)
+       ========================================================================== -->
+  <main class="app-main">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div class="sidebar-content">
+
+        <!-- TAB 1: ESPLORATORE ROTTE & SCHEDE TECNICHE -->
+        <div id="tabExplorer" class="tab-pane active">
+          
+          <div class="section-title">
+            <span>Pianifica & Trova Rotte</span>
+            <span class="badge badge-low-traffic"><i class="fa-solid fa-shield-halved"></i> Dijkstra Pesato</span>
+          </div>
+
+          <!-- Input Punti A e B -->
+          <div class="route-inputs" style="margin-top: 12px;">
+            <div class="input-group">
+              <label><i class="fa-solid fa-location-dot" style="color: #10b981;"></i> Punto di Partenza (A)</label>
+              <input type="text" id="inputStart" class="input-field" placeholder="Es. Milano, Piazza Duomo (o clicca su mappa)" value="Milano, Italia">
+            </div>
+            <div class="input-group">
+              <label><i class="fa-solid fa-flag-checkered" style="color: #ef4444;"></i> Punto di Arrivo (B)</label>
+              <input type="text" id="inputEnd" class="input-field" placeholder="Es. Como, Viale Geno (o clicca su mappa)" value="Como, Italia">
+            </div>
+            <button id="btnCalculateRoutes" class="btn btn-primary" style="width: 100%; justify-content: center; margin-top: 4px;">
+              <i class="fa-solid fa-compass"></i> Calcola Tutte le Strade
+            </button>
+          </div>
+
+          <!-- Selettore Preferenze Routing -->
+          <div class="preferences-panel" style="margin-top: 16px;">
+            <div class="section-title" style="font-size: 0.85rem;">
+              <span>Parametri di Selezione Strade</span>
+              <i class="fa-solid fa-sliders"></i>
+            </div>
+
+            <div class="pref-row">
+              <div class="pref-label">
+                <i class="fa-solid fa-car-burst" style="color: #ef4444;"></i> Evita Traffico Statale
+              </div>
+              <div class="switch-group">
+                <button class="switch-btn active" data-traffic="high">Massimo</button>
+                <button class="switch-btn" data-traffic="medium">Medio</button>
+                <button class="switch-btn" data-traffic="low">Disattivo</button>
+              </div>
+            </div>
+
+            <div class="pref-row">
+              <div class="pref-label">
+                <i class="fa-solid fa-mountain" style="color: #00f2fe;"></i> Tolleranza Salite
+              </div>
+              <div class="switch-group">
+                <button class="switch-btn" data-climb="flat">Pianura</button>
+                <button class="switch-btn active" data-climb="balanced">Bilanciato</button>
+                <button class="switch-btn" data-climb="climber">Passeggiata GPM</button>
+              </div>
+            </div>
+
+            <div class="pref-row">
+              <div class="pref-label">
+                <i class="fa-solid fa-road" style="color: #f59e0b;"></i> Tipo di Fondo
+              </div>
+              <div class="switch-group">
+                <button class="switch-btn active" data-surface="road">Solo Asfalto</button>
+                <button class="switch-btn" data-surface="gravel">Gravel / Misto</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Filtri e Ordinamento Schede -->
+          <div style="margin-top: 20px;">
+            <div class="section-title" style="margin-bottom: 10px;">
+              <span>Schede Tecniche Strade Trovate</span>
+              <span id="routeCountBadge" class="badge badge-low-traffic">3 Rotte</span>
+            </div>
+
+            <div class="sort-filter-bar">
+              <button class="filter-chip active" data-sort="traffic"><i class="fa-solid fa-shield"></i> Meno Trafficata</button>
+              <button class="filter-chip" data-sort="elevation"><i class="fa-solid fa-chart-area"></i> Minor Dislivello</button>
+              <button class="filter-chip" data-sort="distance"><i class="fa-solid fa-ruler-horizontal"></i> Più Breve</button>
+            </div>
+          </div>
+
+          <!-- LISTA SCHEDE TECNICHE DELLE ROTTE -->
+          <div id="routeCardsContainer" class="route-cards-list" style="margin-top: 12px;">
+            <!-- Renderizzato Dinamicamente via JS -->
+          </div>
+
+        </div>
+
+        <!-- TAB 2: ANALISI FIT BRYTON USB -->
+        <div id="tabAnalysis" class="tab-pane" style="display: none;">
+          <div class="section-title">
+            <span>Analisi Allenamento Bryton 420</span>
+            <span class="badge badge-low-traffic"><i class="fa-solid fa-usb"></i> Connessione USB</span>
+          </div>
+
+          <!-- Upload Drag & Drop -->
+          <div id="dropZone" class="upload-zone" style="margin-top: 16px;">
+            <i class="fa-solid fa-file-circle-plus upload-icon"></i>
+            <div class="upload-text">Trascina qui il file .FIT o .GPX</div>
+            <div class="upload-subtext">Collegato via USB? Trovi le uscite nella cartella Bryton/Activity</div>
+            <input type="file" id="fileInput" accept=".fit,.gpx" style="display: none;">
+          </div>
+
+          <!-- Risultati Analisi -->
+          <div id="analysisResults" style="display: none; margin-top: 20px;">
+            <div class="section-title" style="margin-bottom: 12px;">
+              <span>Metriche Reali Registrate</span>
+              <span id="workoutDate" style="font-size: 0.75rem; color: var(--brand-cyan);">--/--/----</span>
+            </div>
+
+            <div class="spec-metrics-grid">
+              <div class="metric-box">
+                <div id="resDist" class="metric-val">-- <span>km</span></div>
+                <div class="metric-lbl">Distanza</div>
+              </div>
+              <div class="metric-box">
+                <div id="resElevation" class="metric-val">-- <span>m</span></div>
+                <div class="metric-lbl">Dislivello D+</div>
+              </div>
+              <div class="metric-box">
+                <div id="resAvgSpeed" class="metric-val">-- <span>km/h</span></div>
+                <div class="metric-lbl">Vel. Media</div>
+              </div>
+              <div class="metric-box">
+                <div id="resMaxSpeed" class="metric-val">-- <span>km/h</span></div>
+                <div class="metric-lbl">Vel. Max</div>
+              </div>
+              <div class="metric-box">
+                <div id="resAvgHR" class="metric-val">-- <span>bpm</span></div>
+                <div class="metric-lbl">Frequenza H.R.</div>
+              </div>
+              <div class="metric-box">
+                <div id="resCadence" class="metric-val">-- <span>rpm</span></div>
+                <div class="metric-lbl">Cadenza</div>
+              </div>
+            </div>
+
+            <!-- Scheda Valutazione Sforzo -->
+            <div class="spec-card" style="margin-top: 12px; cursor: default;">
+              <div class="route-name" style="font-size: 0.9rem; margin-bottom: 6px;">
+                <i class="fa-solid fa-heart-pulse" style="color: var(--brand-orange);"></i> Valutazione Sforzo & Calorie
+              </div>
+              <div style="font-size: 0.85rem; color: var(--text-muted);">
+                Calorie Stimate: <strong id="resCalories" style="color: var(--text-main);">-- kcal</strong> |
+                Indice Sforzo: <strong id="resEffort" style="color: var(--brand-green);">Moderato</strong>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- TAB 3: STRAVA CLOUD SYNC -->
+        <div id="tabStrava" class="tab-pane" style="display: none;">
+          <div class="section-title">
+            <span>Sincronizzazione Cloud Strava</span>
+            <i class="fa-brands fa-strava" style="color: var(--brand-orange);"></i>
+          </div>
+
+          <div class="spec-card" style="margin-top: 16px; cursor: default;">
+            <div class="route-name" style="margin-bottom: 8px;">
+              <i class="fa-solid fa-cloud-arrow-down" style="color: var(--brand-cyan);"></i> Import Automatico Bryton
+            </div>
+            <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 14px;">
+              Collega il tuo account Strava per sincronizzare le uscite pedalate con il tuo Bryton Rider 420 tramite l'app Bryton Active.
+            </p>
+            <button id="btnConnectStrava" class="btn btn-primary" style="width: 100%; justify-content: center;">
+              <i class="fa-brands fa-strava"></i> Connetti Account Strava
+            </button>
+          </div>
+
+          <div id="stravaActivitiesList" style="margin-top: 20px; display: flex; flex-direction: column; gap: 10px;">
+            <!-- Attività caricate da Strava -->
+          </div>
+        </div>
+
+      </div>
+    </aside>
+
+    <!-- CONTAINER MAPPA & GRAFICO ALTIMETRICO -->
+    <section class="map-container-wrapper">
+      <div id="map"></div>
+
+      <!-- GRAFICO ALTIMETRICO E PROFILO ROTTA (FLOATING PANEL) -->
+      <div id="elevationPanel" class="floating-elevation-panel">
+        <div class="chart-header">
+          <div class="chart-title">
+            <i class="fa-solid fa-chart-area" style="color: var(--brand-cyan);"></i>
+            <span id="chartRouteTitle">Profilo Altimetrico & Superfici Strada</span>
+          </div>
+          <button id="btnToggleChart" class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.75rem;">
+            <i class="fa-solid fa-chevron-down"></i> Minimizza
+          </button>
+        </div>
+        <div class="chart-wrapper">
+          <canvas id="elevationChart"></canvas>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- FIT Parser (Client-side) -->
+  <script src="https://cdn.jsdelivr.net/npm/fit-file-parser@1.9.0/dist/fit-parser.min.js"></script>
+
+  <!-- App JavaScript Modules -->
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
