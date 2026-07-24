@@ -201,49 +201,64 @@
     }
 
     initMap(containerId) {
+      const container = document.getElementById(containerId);
+      if (!container) return;
+
       if (typeof L === 'undefined') {
         console.error("Leaflet library not loaded");
         return;
       }
 
-      this.map = L.map(containerId, {
-        zoomControl: true,
-        attributionControl: false
-      }).setView([41.5956, 12.6525], 11);
+      if (this.map) {
+        try { this.map.remove(); } catch(e) {}
+        this.map = null;
+      }
 
-      const cycleTileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '&copy; OpenStreetMap contributors'
-      });
+      try {
+        this.map = L.map(containerId, {
+          zoomControl: true,
+          attributionControl: false
+        }).setView([41.5956, 12.6525], 11);
 
-      const darkTileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}{r}.png', {
-        maxZoom: 19,
-        subdomains: 'abcd',
-        attribution: '&copy; OpenStreetMap &copy; CARTO'
-      });
+        const cycleTileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          maxZoom: 19,
+          attribution: '&copy; OpenStreetMap contributors'
+        });
 
-      const cyclOsmTileLayer = L.tileLayer('https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png', {
-        maxZoom: 18,
-        attribution: '&copy; OpenStreetMap &copy; CyclOSM'
-      });
+        const darkTileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}{r}.png', {
+          maxZoom: 19,
+          subdomains: 'abcd',
+          attribution: '&copy; OpenStreetMap &copy; CARTO'
+        });
 
-      cycleTileLayer.addTo(this.map);
+        const cyclOsmTileLayer = L.tileLayer('https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png', {
+          maxZoom: 18,
+          attribution: '&copy; OpenStreetMap &copy; CyclOSM'
+        });
 
-      const baseMaps = {
-        "Mappa Stradale / OSM (Consigliata)": cycleTileLayer,
-        "Mappa Scura Pro": darkTileLayer,
-        "Mappa Ciclismo / CyclOSM": cyclOsmTileLayer
-      };
-      L.control.layers(baseMaps, null, { position: 'topright' }).addTo(this.map);
+        cycleTileLayer.addTo(this.map);
 
-      const fixMapSize = () => {
-        if (this.map) this.map.invalidateSize();
-      };
-      setTimeout(fixMapSize, 100);
-      setTimeout(fixMapSize, 400);
-      setTimeout(fixMapSize, 1000);
+        const baseMaps = {
+          "Mappa Stradale / OSM (Consigliata)": cycleTileLayer,
+          "Mappa Scura Pro": darkTileLayer,
+          "Mappa Ciclismo / CyclOSM": cyclOsmTileLayer
+        };
+        L.control.layers(baseMaps, null, { position: 'topright' }).addTo(this.map);
 
-      window.addEventListener('resize', fixMapSize);
+        const fixMapSize = () => {
+          if (this.map) this.map.invalidateSize();
+        };
+
+        requestAnimationFrame(fixMapSize);
+        setTimeout(fixMapSize, 50);
+        setTimeout(fixMapSize, 200);
+        setTimeout(fixMapSize, 600);
+        setTimeout(fixMapSize, 1200);
+
+        window.addEventListener('resize', fixMapSize);
+      } catch (err) {
+        console.error("Error initializing map:", err);
+      }
     }
 
     refreshMapSize() {
@@ -1015,7 +1030,7 @@
   }
 
   // 6. INIT APPLICATION CONTROLLER
-  document.addEventListener('DOMContentLoaded', () => {
+  function initApp() {
     const mapManager = new MapManager('map');
     const explorerEngine = new RouteExplorerEngine();
     const plannerManager = new PlannerManager();
@@ -1206,7 +1221,7 @@
       });
     });
 
-    const handleCalculateRoutes = async () => {
+    async function handleCalculateRoutes() {
       if (!routeCardsContainer) return;
       try {
         const startVal = inputStart?.value.trim() || 'Aprilia';
@@ -1454,5 +1469,11 @@
     setTimeout(() => {
       handleCalculateRoutes();
     }, 100);
-  });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initApp);
+  } else {
+    initApp();
+  }
 })();

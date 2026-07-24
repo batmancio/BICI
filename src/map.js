@@ -14,49 +14,67 @@ export class MapManager {
   }
 
   initMap(containerId) {
-    this.map = L.map(containerId, {
-      zoomControl: true,
-      attributionControl: false
-    }).setView([41.5956, 12.6525], 11);
+    const container = document.getElementById(containerId);
+    if (!container) return;
 
-    // Mappa Stradale OSM Standard (Affidabilità 100% su GitHub Pages senza blocchi CORS/AdBlock)
-    const cycleTileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '&copy; OpenStreetMap contributors'
-    });
+    if (typeof L === 'undefined') {
+      console.error("Leaflet library not loaded");
+      return;
+    }
 
-    // Mappa Scura CARTO Rastertiles
-    const darkTileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}{r}.png', {
-      maxZoom: 19,
-      subdomains: 'abcd',
-      attribution: '&copy; OpenStreetMap &copy; CARTO'
-    });
+    if (this.map) {
+      try { this.map.remove(); } catch(e) {}
+      this.map = null;
+    }
 
-    // Mappa Ciclismo CyclOSM
-    const cyclOsmTileLayer = L.tileLayer('https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png', {
-      maxZoom: 18,
-      attribution: '&copy; OpenStreetMap &copy; CyclOSM'
-    });
+    try {
+      this.map = L.map(containerId, {
+        zoomControl: true,
+        attributionControl: false
+      }).setView([41.5956, 12.6525], 11);
 
-    // Aggiunge la Mappa Stradale OSM di default per massima affidabilità
-    cycleTileLayer.addTo(this.map);
+      // Mappa Stradale OSM Standard
+      const cycleTileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap contributors'
+      });
 
-    const baseMaps = {
-      "Mappa Stradale / OSM (Consigliata)": cycleTileLayer,
-      "Mappa Scura Pro": darkTileLayer,
-      "Mappa Ciclismo / CyclOSM": cyclOsmTileLayer
-    };
-    L.control.layers(baseMaps, null, { position: 'topright' }).addTo(this.map);
+      // Mappa Scura CARTO Rastertiles
+      const darkTileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}{r}.png', {
+        maxZoom: 19,
+        subdomains: 'abcd',
+        attribution: '&copy; OpenStreetMap &copy; CARTO'
+      });
 
-    // Risoluzione rapida dimensioni rendering Leaflet
-    const fixMapSize = () => {
-      if (this.map) this.map.invalidateSize();
-    };
-    setTimeout(fixMapSize, 100);
-    setTimeout(fixMapSize, 400);
-    setTimeout(fixMapSize, 1000);
+      // Mappa Ciclismo CyclOSM
+      const cyclOsmTileLayer = L.tileLayer('https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png', {
+        maxZoom: 18,
+        attribution: '&copy; OpenStreetMap &copy; CyclOSM'
+      });
 
-    window.addEventListener('resize', fixMapSize);
+      cycleTileLayer.addTo(this.map);
+
+      const baseMaps = {
+        "Mappa Stradale / OSM (Consigliata)": cycleTileLayer,
+        "Mappa Scura Pro": darkTileLayer,
+        "Mappa Ciclismo / CyclOSM": cyclOsmTileLayer
+      };
+      L.control.layers(baseMaps, null, { position: 'topright' }).addTo(this.map);
+
+      const fixMapSize = () => {
+        if (this.map) this.map.invalidateSize();
+      };
+
+      requestAnimationFrame(fixMapSize);
+      setTimeout(fixMapSize, 50);
+      setTimeout(fixMapSize, 200);
+      setTimeout(fixMapSize, 600);
+      setTimeout(fixMapSize, 1200);
+
+      window.addEventListener('resize', fixMapSize);
+    } catch (err) {
+      console.error("Error initializing map:", err);
+    }
   }
 
   refreshMapSize() {

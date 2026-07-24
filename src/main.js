@@ -9,7 +9,7 @@ import { FitParserEngine } from './fitParser.js';
 import { AnalyticsManager } from './analysis.js';
 import { StravaSyncEngine } from './stravaSync.js';
 
-document.addEventListener('DOMContentLoaded', () => {
+function initApp() {
   const mapManager = new MapManager('map');
   const explorerEngine = new RouteExplorerEngine();
   const plannerManager = new PlannerManager();
@@ -211,7 +211,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  const handleCalculateRoutes = async () => {
+  async function handleCalculateRoutes() {
     try {
       const startVal = inputStart.value.trim() || 'Aprilia';
       const endVal = (currentRouteMode === 'loop') ? startVal : (inputEnd.value.trim() || 'Albano Laziale');
@@ -520,4 +520,10 @@ document.addEventListener('DOMContentLoaded', () => {
   setTimeout(() => {
     handleCalculateRoutes();
   }, 100);
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initApp);
+} else {
+  initApp();
+}
