@@ -64,69 +64,49 @@
           
           <div class="section-title">
             <span>Pianifica & Trova Rotte</span>
-            <span class="badge badge-low-traffic"><i class="fa-solid fa-shield-halved"></i> Dijkstra Pesato</span>
+            <span class="badge badge-low-traffic"><i class="fa-solid fa-road"></i> OSRM & OpenStreetMap</span>
           </div>
 
           <!-- Input Punti A e B -->
           <div class="route-inputs" style="margin-top: 12px;">
             <div class="input-group">
               <label><i class="fa-solid fa-location-dot" style="color: #10b981;"></i> Punto di Partenza (A)</label>
-              <input type="text" id="inputStart" class="input-field" placeholder="Es. Milano, Piazza Duomo (o clicca su mappa)" value="Milano, Italia">
+              <input type="text" id="inputStart" class="input-field" placeholder="Es. Aprilia (o clicca sulla mappa)" value="Aprilia">
             </div>
             <div class="input-group">
               <label><i class="fa-solid fa-flag-checkered" style="color: #ef4444;"></i> Punto di Arrivo (B)</label>
-              <input type="text" id="inputEnd" class="input-field" placeholder="Es. Como, Viale Geno (o clicca su mappa)" value="Como, Italia">
+              <input type="text" id="inputEnd" class="input-field" placeholder="Es. Albano Laziale (o clicca sulla mappa)" value="Albano Laziale">
             </div>
             <button id="btnCalculateRoutes" class="btn btn-primary" style="width: 100%; justify-content: center; margin-top: 4px;">
               <i class="fa-solid fa-compass"></i> Calcola Tutte le Strade
             </button>
           </div>
 
-          <!-- Selettore Preferenze Routing -->
+          <!-- Slider Chilometraggio Desiderato -->
           <div class="preferences-panel" style="margin-top: 16px;">
-            <div class="section-title" style="font-size: 0.85rem;">
-              <span>Parametri di Selezione Strade</span>
-              <i class="fa-solid fa-sliders"></i>
+            <div class="section-title" style="font-size: 0.85rem; margin-bottom: 8px;">
+              <span>Target Chilometraggio Desiderato</span>
+              <i class="fa-solid fa-ruler-horizontal" style="color: var(--brand-cyan);"></i>
+            </div>
+            
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <span style="font-size: 0.8rem; color: var(--text-muted);">Distanza Target:</span>
+              <span style="font-weight: 700; color: var(--brand-cyan); font-size: 1rem;"><span id="targetKmValue">45</span> km</span>
             </div>
 
-            <div class="pref-row">
-              <div class="pref-label">
-                <i class="fa-solid fa-car-burst" style="color: #ef4444;"></i> Evita Traffico Statale
-              </div>
-              <div class="switch-group">
-                <button class="switch-btn active" data-traffic="high">Massimo</button>
-                <button class="switch-btn" data-traffic="medium">Medio</button>
-                <button class="switch-btn" data-traffic="low">Disattivo</button>
-              </div>
-            </div>
-
-            <div class="pref-row">
-              <div class="pref-label">
-                <i class="fa-solid fa-mountain" style="color: #00f2fe;"></i> Tolleranza Salite
-              </div>
-              <div class="switch-group">
-                <button class="switch-btn" data-climb="flat">Pianura</button>
-                <button class="switch-btn active" data-climb="balanced">Bilanciato</button>
-                <button class="switch-btn" data-climb="climber">Passeggiata GPM</button>
-              </div>
-            </div>
-
-            <div class="pref-row">
-              <div class="pref-label">
-                <i class="fa-solid fa-road" style="color: #f59e0b;"></i> Tipo di Fondo
-              </div>
-              <div class="switch-group">
-                <button class="switch-btn active" data-surface="road">Solo Asfalto</button>
-                <button class="switch-btn" data-surface="gravel">Gravel / Misto</button>
-              </div>
+            <input type="range" id="sliderTargetKm" min="15" max="120" step="5" value="45" style="width: 100%; accent-color: var(--brand-cyan); cursor: pointer;">
+            <div style="display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--text-muted); margin-top: 4px;">
+              <span>15 km (Diretta)</span>
+              <span>60 km</span>
+              <span>120 km (Giro Lungo)</span>
             </div>
           </div>
 
           <!-- Filtri e Ordinamento Schede -->
           <div style="margin-top: 20px;">
             <div class="section-title" style="margin-bottom: 10px;">
-              <span>Schede Tecniche Strade Trovate</span>
-              <span id="routeCountBadge" class="badge badge-low-traffic">3 Rotte</span>
+              <span>5 Opzioni Stradali Trovate</span>
+              <span id="routeCountBadge" class="badge badge-low-traffic">5 Strade Reali</span>
             </div>
 
             <div class="sort-filter-bar">

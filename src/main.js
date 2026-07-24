@@ -52,21 +52,44 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  let clickState = 'start'; // alternanza tra start ed end per il click sulla mappa
+
+  const sliderTargetKm = document.getElementById('sliderTargetKm');
+  const targetKmValue = document.getElementById('targetKmValue');
+
+  if (sliderTargetKm && targetKmValue) {
+    sliderTargetKm.addEventListener('input', (e) => {
+      targetKmValue.textContent = e.target.value;
+    });
+
+    sliderTargetKm.addEventListener('change', () => {
+      handleCalculateRoutes();
+    });
+  }
+
   const handleCalculateRoutes = async () => {
-    const startVal = inputStart.value.trim() || 'Milano';
-    const endVal = inputEnd.value.trim() || 'Como';
+    const startVal = inputStart.value.trim() || 'Aprilia';
+    const endVal = inputEnd.value.trim() || 'Albano Laziale';
+    const targetKm = parseInt(sliderTargetKm?.value || '45', 10);
 
-    const preferences = {
-      traffic: document.querySelector('.switch-btn[data-traffic].active')?.getAttribute('data-traffic') || 'high',
-      climb: document.querySelector('.switch-btn[data-climb].active')?.getAttribute('data-climb') || 'balanced',
-      surface: document.querySelector('.switch-btn[data-surface].active')?.getAttribute('data-surface') || 'road'
-    };
+    routeCardsContainer.innerHTML = `
+      <div style="text-align: center; padding: 40px 20px; color: var(--text-muted);">
+        <i class="fa-solid fa-compass fa-spin" style="font-size: 2.2rem; color: var(--brand-cyan); margin-bottom: 14px;"></i>
+        <div style="font-weight: 600; color: white; margin-bottom: 6px;">Ricerca 5 Opzioni Stradali Reali...</div>
+        <div style="font-size: 0.8rem;">Analisi arterie stradali OSRM & altimetria Open-Meteo</div>
+      </div>
+    `;
 
-    activeRoutes = await explorerEngine.discoverRoutes(startVal, endVal, preferences);
+    activeRoutes = await explorerEngine.discoverRoutes(startVal, endVal, targetKm);
     renderTechnicalSpecCards(activeRoutes);
 
     mapManager.clearRoutes();
-    mapManager.addStartEndMarkers([45.4642, 9.1900], [45.8103, 9.0863]);
+
+    const firstRoute = activeRoutes[0];
+    const startCoords = firstRoute?.startCoords || [41.5956, 12.6525];
+    const endCoords = firstRoute?.endCoords || [41.7288, 12.6582];
+
+    mapManager.addStartEndMarkers(startCoords, endCoords);
 
     activeRoutes.forEach(route => {
       mapManager.renderRoutePolyline(route.coords, route.color, false, route.id);
@@ -78,6 +101,19 @@ document.addEventListener('DOMContentLoaded', () => {
       selectRoute(activeRoutes[0].id);
     }
   };
+
+  // Selezione punti cliccando direttamente sulla mappa
+  mapManager.onMapClick((latLng) => {
+    const formattedCoord = `${latLng.lat.toFixed(4)}, ${latLng.lng.toFixed(4)}`;
+    if (clickState === 'start') {
+      inputStart.value = formattedCoord;
+      clickState = 'end';
+    } else {
+      inputEnd.value = formattedCoord;
+      clickState = 'start';
+    }
+    handleCalculateRoutes();
+  });
 
   btnCalculateRoutes.addEventListener('click', handleCalculateRoutes);
 
@@ -95,11 +131,16 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="route-color-pill" style="background: ${route.color};"></div>
             ${route.name}
           </div>
-          <span class="badge ${route.badgeClass}">${route.difficulty}</span>
+          <span class="badge badge-low-traffic">${route.difficulty}</span>
         </div>
 
-        <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 10px;">
-          <i class="fa-solid fa-shield-halved" style="color: ${route.color}"></i> ${route.trafficBadge}
+        <div style="font-size: 0.8rem; color: var(--brand-cyan); margin-bottom: 6px; font-weight: 500;">
+          <i class="fa-solid fa-map-location-dot" style="color: ${route.color}"></i> ${route.categoryTag}
+        </div>
+
+        <div style="font-size: 0.75rem; color: var(--text-muted); background: rgba(255,255,255,0.05); padding: 8px 10px; border-radius: 6px; margin-bottom: 10px; border-left: 3px solid ${route.color};">
+          <i class="fa-solid fa-road" style="margin-right: 4px; color: var(--brand-yellow);"></i> 
+          <strong>Itinerario:</strong> ${route.streetSummary}
         </div>
 
         <div class="spec-metrics-grid">
@@ -117,20 +158,7 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
         </div>
 
-        <div class="surface-breakdown">
-          <div class="surface-bar-container">
-            <div class="surface-segment surf-asphalt" style="width: ${route.surface.asphaltPercent}%;" title="Asfalto: ${route.surface.asphaltPercent}%"></div>
-            <div class="surface-segment surf-cycleway" style="width: ${route.surface.cyclewayPercent}%;" title="Ciclabile: ${route.surface.cyclewayPercent}%"></div>
-            <div class="surface-segment surf-gravel" style="width: ${route.surface.gravelPercent}%;" title="Sterrato: ${route.surface.gravelPercent}%"></div>
-          </div>
-          <div class="surface-legend">
-            <div class="surface-item"><div class="dot" style="background: var(--brand-cyan);"></div> Asfalto ${route.surface.asphaltPercent}%</div>
-            <div class="surface-item"><div class="dot" style="background: var(--brand-green);"></div> Ciclabile ${route.surface.cyclewayPercent}%</div>
-            <div class="surface-item"><div class="dot" style="background: var(--brand-yellow);"></div> Sterrato ${route.surface.gravelPercent}%</div>
-          </div>
-        </div>
-
-        <div style="display: flex; justify-content: space-between; margin-top: 12px; font-size: 0.75rem; color: var(--text-muted); background: rgba(0,0,0,0.2); padding: 6px 10px; border-radius: 6px;">
+        <div style="display: flex; justify-content: space-between; margin-top: 12px; font-size: 0.75rem; color: var(--text-muted); background: rgba(0,0,0,0.25); padding: 6px 10px; border-radius: 6px;">
           <span>⏱️ @20km/h: <strong>${route.timeEstimates.speed20}</strong></span>
           <span>@25km/h: <strong>${route.timeEstimates.speed25}</strong></span>
           <span>@30km/h: <strong>${route.timeEstimates.speed30}</strong></span>

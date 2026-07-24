@@ -116,4 +116,12 @@ export class MapManager {
       this.hoverMarker.setLatLng(latLng);
     }
   }
+
+  onMapClick(callback) {
+    if (this.map) {
+      this.map.on('click', (e) => {
+        callback(e.latlng);
+      });
+    }
+  }
 }
