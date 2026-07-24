@@ -6,29 +6,29 @@
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
 :root {
-  /* Technical Tuscan Dark Palette */
-  --bg-main: #0f0d0c;          /* Deep Obsidian Earth */
-  --bg-sidebar: #161311;       /* Dark Tuscan Surface */
-  --bg-header: #1c1815;        /* Siena Header Surface */
-  --bg-card: #1c1815;          /* Siena Card Surface */
-  --bg-card-hover: #26211d;    /* Warm Earth Hover */
-  --bg-input: #110e0d;         /* Dark Technical Input */
-  --bg-pill: #1c1815;
-  --bg-pill-active: #c85a17;   /* Official Strade Bianche Terracotta */
+  /* Technical Tuscan Dark Palette (Non-Strava Tuscan Dust Gold) */
+  --bg-main: #0d0b0a;          /* Deep Obsidian Earth */
+  --bg-sidebar: #141210;       /* Dark Tuscan Surface */
+  --bg-header: #1a1714;        /* Siena Header Surface */
+  --bg-card: #1a1714;          /* Siena Card Surface */
+  --bg-card-hover: #24201c;    /* Warm Earth Hover */
+  --bg-input: #0f0d0c;         /* Dark Technical Input */
+  --bg-pill: #1a1714;
+  --bg-pill-active: #d4af37;   /* Tuscan Dust Gold Active */
   
-  --border-color: #2b241f;     /* Crisp Architectural Border */
-  --border-light: #3a322c;
-  --border-focus: #d96b27;     /* Terracotta Focus */
+  --border-color: #2b2520;     /* Crisp Architectural Border */
+  --border-light: #3a322a;
+  --border-focus: #e6b85c;     /* Dust Gold Focus */
   
-  /* Terracotta & Tuscan Sand Accents */
-  --brand-primary: #d96b27;    /* Tuscan Terracotta */
-  --brand-primary-hover: #e87a36;
-  --brand-accent: #e6b85c;     /* Chalk Dust Gold */
+  /* Tuscan Dust Gold & Cyan Technical Accents */
+  --brand-primary: #e6b85c;    /* Tuscan Dust Gold (Primary Brand Accent) */
+  --brand-primary-hover: #f5cb74;
+  --brand-accent: #38bdf8;     /* Technical Chalk Cyan */
   
   /* Technical Slope Colors */
   --slope-flat: #2e8b57;       /* Cypress Green <3% */
-  --slope-mild: #e6b85c;       /* Dust Gold 3-6% */
-  --slope-mod: #d96b27;        /* Terracotta 6-9% */
+  --slope-mild: #38bdf8;       /* Chalk Cyan 3-6% */
+  --slope-mod: #e6b85c;        /* Dust Gold 6-9% */
   --slope-steep: #c0392b;      /* Siena Red 9-12% */
   --slope-wall: #7b1113;       /* Deep Burgundy >12% */
 

@@ -1796,10 +1796,10 @@
         if (resElem) resElem.style.display = 'block';
 
         mapManager.clearRoutes();
-        mapManager.renderRoutePolyline(metrics.coords, '#d96b27', true, 'user-workout');
+        mapManager.renderRoutePolyline(metrics.coords, '#e6b85c', true, 'user-workout');
         mapManager.fitBoundsToRoutes();
 
-        analyticsManager.renderElevationChart(elevationCanvas, metrics.elevationProfile, '#d96b27');
+        analyticsManager.renderElevationChart(elevationCanvas, metrics.elevationProfile, '#e6b85c');
         document.querySelector('.nav-btn[data-tab="analysis"]')?.click();
       } catch (err) {
         alert("Errore nella lettura file: " + err.message);
