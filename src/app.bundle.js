@@ -210,15 +210,15 @@
         attributionControl: false
       }).setView([41.5956, 12.6525], 11);
 
+      const cycleTileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap contributors'
+      });
+
       const darkTileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}{r}.png', {
         maxZoom: 19,
         subdomains: 'abcd',
         attribution: '&copy; OpenStreetMap &copy; CARTO'
-      });
-
-      const cycleTileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '&copy; OpenStreetMap contributors'
       });
 
       const cyclOsmTileLayer = L.tileLayer('https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png', {
@@ -226,19 +226,11 @@
         attribution: '&copy; OpenStreetMap &copy; CyclOSM'
       });
 
-      darkTileLayer.on('tileerror', () => {
-        console.warn("Tile Scura non disponibile, passaggio a OpenStreetMap.");
-        if (this.map.hasLayer(darkTileLayer)) {
-          this.map.removeLayer(darkTileLayer);
-          cycleTileLayer.addTo(this.map);
-        }
-      });
-
-      darkTileLayer.addTo(this.map);
+      cycleTileLayer.addTo(this.map);
 
       const baseMaps = {
+        "Mappa Stradale / OSM (Consigliata)": cycleTileLayer,
         "Mappa Scura Pro": darkTileLayer,
-        "Mappa Stradale / OSM": cycleTileLayer,
         "Mappa Ciclismo / CyclOSM": cyclOsmTileLayer
       };
       L.control.layers(baseMaps, null, { position: 'topright' }).addTo(this.map);
@@ -283,7 +275,7 @@
       }
     }
 
-    addStartEndMarkers(startLatLng, endLatLng) {
+    addStartEndMarkers(startLatLng, endLatLng, waypoints = []) {
       if (!this.map) return;
       this.clearMarkers();
 
@@ -303,8 +295,20 @@
 
       const startMarker = L.marker(startLatLng, { icon: startIcon }).addTo(this.map);
       const endMarker = L.marker(endLatLng, { icon: endIcon }).addTo(this.map);
-
       this.markerLayers.push(startMarker, endMarker);
+
+      if (Array.isArray(waypoints)) {
+        waypoints.forEach((wp, idx) => {
+          const wpIcon = L.divIcon({
+            className: 'custom-map-icon waypoint-icon',
+            html: `<div style="background: #8b5cf6; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 11px; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.4);">${idx + 1}</div>`,
+            iconSize: [24, 24],
+            iconAnchor: [12, 12]
+          });
+          const wpMarker = L.marker(wp, { icon: wpIcon }).addTo(this.map);
+          this.markerLayers.push(wpMarker);
+        });
+      }
     }
 
     renderRoutePolyline(coordinates, color, isSelected = false, routeId = '') {
@@ -542,7 +546,7 @@
       return null;
     }
 
-    async discoverRoutes(startName, endName, targetKm = 45, explicitStartCoords = null, explicitEndCoords = null) {
+    async discoverRoutes(startName, endName, targetKm = 45, explicitStartCoords = null, explicitEndCoords = null, customWaypoints = []) {
       let startCoords = explicitStartCoords || await this.geocodeLocation(startName) || [41.5956, 12.6525];
       let endCoords = explicitEndCoords || await this.geocodeLocation(endName) || [41.7288, 12.6582];
 
@@ -555,60 +559,87 @@
       const kmRatio = Math.max(1.0, targetKm / Math.max(10, directDistKm));
       const offsetScale = Math.min(0.25, 0.04 * kmRatio);
 
-      const via1 = null;
       const via2 = [midLat + dLng * offsetScale * 0.8 + 0.01, midLng - dLat * offsetScale * 0.8 - 0.01];
       const via3 = [midLat - dLng * offsetScale * 1.2 - 0.02, midLng + dLat * offsetScale * 1.2 + 0.02];
       const via4 = [midLat + dLng * offsetScale * 1.6 + 0.03, midLng - dLat * offsetScale * 1.6 - 0.02];
       const via5 = [midLat - dLng * offsetScale * 2.2 - 0.04, midLng + dLat * offsetScale * 2.2 + 0.04];
 
       const [raw1, raw2, raw3, raw4, raw5] = await Promise.all([
-        this.fetchOSRMRoute(startCoords, endCoords, via1),
-        this.fetchOSRMRoute(startCoords, endCoords, via2),
-        this.fetchOSRMRoute(startCoords, endCoords, via3),
-        this.fetchOSRMRoute(startCoords, endCoords, via4),
-        this.fetchOSRMRoute(startCoords, endCoords, via5)
+        this.fetchOSRMRoute(startCoords, endCoords, customWaypoints.length > 0 ? customWaypoints : null, true),
+        this.fetchOSRMRoute(startCoords, endCoords, customWaypoints.length > 0 ? customWaypoints : [via2]),
+        this.fetchOSRMRoute(startCoords, endCoords, customWaypoints.length > 0 ? customWaypoints : [via3]),
+        this.fetchOSRMRoute(startCoords, endCoords, customWaypoints.length > 0 ? customWaypoints : [via4]),
+        this.fetchOSRMRoute(startCoords, endCoords, customWaypoints.length > 0 ? customWaypoints : [via5])
       ]);
 
+      const alt1 = (raw1 && raw1.alternatives && raw1.alternatives[0]) ? raw1.alternatives[0] : null;
+      const alt2 = (raw1 && raw1.alternatives && raw1.alternatives[1]) ? raw1.alternatives[1] : null;
+
+      const route1Raw = raw1;
+      const route2Raw = alt1 || raw2 || raw1;
+      const route3Raw = alt2 || raw3 || raw1;
+      const route4Raw = raw4 || raw1;
+      const route5Raw = raw5 || raw1;
+
       const routes = await Promise.all([
-        this.buildRouteObject('opt-1', 'Arteria Principale Diretta', '#0ea5e9', raw1, startCoords, endCoords, 'Strada Principale'),
-        this.buildRouteObject('opt-2', 'Variante Secondaria Vicinale', '#10b981', raw2 || raw1, startCoords, endCoords, 'Strade Vicinali'),
-        this.buildRouteObject('opt-3', 'Percorso Collinare & Salite', '#8b5cf6', raw3 || raw1, startCoords, endCoords, 'Salita & Tornanti'),
-        this.buildRouteObject('opt-4', 'Tracciato Panoramico Esterno', '#06b6d4', raw4 || raw1, startCoords, endCoords, 'Provinciali Panoramiche'),
-        this.buildRouteObject('opt-5', 'Giro Esteso Fondo Pro', '#f43f5e', raw5 || raw1, startCoords, endCoords, 'Percorso Lungo')
+        this.buildRouteObject('opt-1', 'Arteria Principale Diretta (OSRM)', '#0ea5e9', route1Raw, startCoords, endCoords, 'Strada Principale'),
+        this.buildRouteObject('opt-2', 'Variante Secondaria Vicinale', '#10b981', route2Raw, startCoords, endCoords, 'Strade Vicinali'),
+        this.buildRouteObject('opt-3', 'Percorso Collinare & Salite', '#8b5cf6', route3Raw, startCoords, endCoords, 'Salita & Tornanti'),
+        this.buildRouteObject('opt-4', 'Tracciato Panoramico Esterno', '#06b6d4', route4Raw, startCoords, endCoords, 'Provinciali Panoramiche'),
+        this.buildRouteObject('opt-5', 'Giro Esteso Fondo Pro', '#f43f5e', route5Raw, startCoords, endCoords, 'Percorso Lungo')
       ]);
 
       return routes;
     }
 
-    async fetchOSRMRoute(startCoords, endCoords, viaCoords = null) {
-      let waypointsStr = `${startCoords[1]},${startCoords[0]}`;
-      if (viaCoords) waypointsStr += `;${viaCoords[1]},${viaCoords[0]}`;
-      waypointsStr += `;${endCoords[1]},${endCoords[0]}`;
+    async fetchOSRMRoute(startCoords, endCoords, viaCoordsList = null, requestAlternatives = false) {
+      let waypoints = [startCoords];
+      if (Array.isArray(viaCoordsList)) {
+        waypoints.push(...viaCoordsList);
+      }
+      waypoints.push(endCoords);
+
+      const waypointsStr = waypoints.map(pt => `${pt[1]},${pt[0]}`).join(';');
+      const altParam = requestAlternatives ? '&alternatives=3' : '';
 
       const endpoints = [
-        `https://routing.openstreetmap.de/routed-bike/route/v1/biking/${waypointsStr}?overview=full&geometries=geojson&steps=true`,
-        `https://router.project-osrm.org/route/v1/driving/${waypointsStr}?overview=full&geometries=geojson&steps=true`
+        `https://routing.openstreetmap.de/routed-bike/route/v1/biking/${waypointsStr}?overview=full&geometries=geojson&steps=true${altParam}`,
+        `https://router.project-osrm.org/route/v1/driving/${waypointsStr}?overview=full&geometries=geojson&steps=true${altParam}`,
+        `https://routing.openstreetmap.de/routed-car/route/v1/driving/${waypointsStr}?overview=full&geometries=geojson&steps=true${altParam}`
       ];
 
       for (const url of endpoints) {
         try {
           const controller = new AbortController();
-          const tid = setTimeout(() => controller.abort(), 2000);
+          const tid = setTimeout(() => controller.abort(), 3000);
           const res = await fetch(url, { signal: controller.signal });
           clearTimeout(tid);
 
           if (res.ok) {
             const data = await res.json();
             if (data && data.code === 'Ok' && data.routes && data.routes.length > 0) {
-              const route = data.routes[0];
-              const leafletCoords = route.geometry.coordinates.map(coord => [coord[1], coord[0]]);
-              const streetNames = this.extractStreetNames(route.legs);
-              return {
-                distanceMeters: route.distance,
-                durationSeconds: route.duration,
-                coords: leafletCoords,
-                streetNames
+              const primary = data.routes[0];
+              const primaryResult = {
+                distanceMeters: primary.distance,
+                durationSeconds: primary.duration,
+                coords: primary.geometry.coordinates.map(coord => [coord[1], coord[0]]),
+                streetNames: this.extractStreetNames(primary.legs),
+                alternatives: []
               };
+
+              if (data.routes.length > 1) {
+                for (let i = 1; i < data.routes.length; i++) {
+                  const altRoute = data.routes[i];
+                  primaryResult.alternatives.push({
+                    distanceMeters: altRoute.distance,
+                    durationSeconds: altRoute.duration,
+                    coords: altRoute.geometry.coordinates.map(coord => [coord[1], coord[0]]),
+                    streetNames: this.extractStreetNames(altRoute.legs)
+                  });
+                }
+              }
+
+              return primaryResult;
             }
           }
         } catch (err) {
@@ -1058,6 +1089,8 @@
       });
     }
 
+    let customWaypoints = [];
+
     const handleCalculateRoutes = async () => {
       if (!routeCardsContainer) return;
       try {
@@ -1083,15 +1116,15 @@
           </div>
         `;
 
-        activeRoutes = await explorerEngine.discoverRoutes(startVal, endVal, targetKm, startCoords, endCoords);
+        activeRoutes = await explorerEngine.discoverRoutes(startVal, endVal, targetKm, startCoords, endCoords, customWaypoints);
         renderTechnicalSpecCards(activeRoutes);
 
         mapManager.clearRoutes();
         const firstRoute = activeRoutes[0];
-        const startCoords = firstRoute?.startCoords || [41.5956, 12.6525];
-        const endCoords = firstRoute?.endCoords || [41.7288, 12.6582];
+        const actualStartCoords = firstRoute?.startCoords || startCoords || [41.5956, 12.6525];
+        const actualEndCoords = firstRoute?.endCoords || endCoords || [41.7288, 12.6582];
 
-        mapManager.addStartEndMarkers(startCoords, endCoords);
+        mapManager.addStartEndMarkers(actualStartCoords, actualEndCoords, customWaypoints);
 
         activeRoutes.forEach(route => {
           mapManager.renderRoutePolyline(route.coords, route.color, false, route.id);
@@ -1110,15 +1143,27 @@
       const formattedCoord = `${latLng.lat.toFixed(4)}, ${latLng.lng.toFixed(4)}`;
       if (clickState === 'start') {
         inputStart.value = formattedCoord;
+        inputStart.dataset.lat = latLng.lat;
+        inputStart.dataset.lng = latLng.lng;
         clickState = 'end';
-      } else {
+      } else if (clickState === 'end') {
         inputEnd.value = formattedCoord;
-        clickState = 'start';
+        inputEnd.dataset.lat = latLng.lat;
+        inputEnd.dataset.lng = latLng.lng;
+        clickState = 'waypoint';
+      } else {
+        customWaypoints.push([latLng.lat, latLng.lng]);
       }
       handleCalculateRoutes();
     });
 
-    if (btnCalculateRoutes) btnCalculateRoutes.addEventListener('click', handleCalculateRoutes);
+    if (btnCalculateRoutes) {
+      btnCalculateRoutes.addEventListener('click', () => {
+        customWaypoints = [];
+        clickState = 'start';
+        handleCalculateRoutes();
+      });
+    }
 
     function renderTechnicalSpecCards(routes) {
       if (!routeCardsContainer) return;

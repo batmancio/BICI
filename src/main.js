@@ -155,6 +155,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  let customWaypoints = [];
+
   const handleCalculateRoutes = async () => {
     try {
       const startVal = inputStart.value.trim() || 'Aprilia';
@@ -179,16 +181,16 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
       `;
 
-      activeRoutes = await explorerEngine.discoverRoutes(startVal, endVal, targetKm, startCoords, endCoords);
+      activeRoutes = await explorerEngine.discoverRoutes(startVal, endVal, targetKm, startCoords, endCoords, customWaypoints);
       renderTechnicalSpecCards(activeRoutes);
 
       mapManager.clearRoutes();
 
       const firstRoute = activeRoutes[0];
-      const startCoords = firstRoute?.startCoords || [41.5956, 12.6525];
-      const endCoords = firstRoute?.endCoords || [41.7288, 12.6582];
+      const actualStartCoords = firstRoute?.startCoords || startCoords || [41.5956, 12.6525];
+      const actualEndCoords = firstRoute?.endCoords || endCoords || [41.7288, 12.6582];
 
-      mapManager.addStartEndMarkers(startCoords, endCoords);
+      mapManager.addStartEndMarkers(actualStartCoords, actualEndCoords, customWaypoints);
 
       activeRoutes.forEach(route => {
         mapManager.renderRoutePolyline(route.coords, route.color, false, route.id);
@@ -218,15 +220,26 @@ document.addEventListener('DOMContentLoaded', () => {
     const formattedCoord = `${latLng.lat.toFixed(4)}, ${latLng.lng.toFixed(4)}`;
     if (clickState === 'start') {
       inputStart.value = formattedCoord;
+      inputStart.dataset.lat = latLng.lat;
+      inputStart.dataset.lng = latLng.lng;
       clickState = 'end';
-    } else {
+    } else if (clickState === 'end') {
       inputEnd.value = formattedCoord;
-      clickState = 'start';
+      inputEnd.dataset.lat = latLng.lat;
+      inputEnd.dataset.lng = latLng.lng;
+      clickState = 'waypoint';
+    } else {
+      // Click successivi aggiungono un waypoint intermedio
+      customWaypoints.push([latLng.lat, latLng.lng]);
     }
     handleCalculateRoutes();
   });
 
-  btnCalculateRoutes.addEventListener('click', handleCalculateRoutes);
+  btnCalculateRoutes.addEventListener('click', () => {
+    customWaypoints = [];
+    clickState = 'start';
+    handleCalculateRoutes();
+  });
 
   function renderTechnicalSpecCards(routes) {
     routeCardsContainer.innerHTML = '';

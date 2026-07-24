@@ -154,11 +154,11 @@ export class RouteExplorerEngine {
   }
 
   /**
-   * Genera 5 opzioni stradali reali distinte con nomi delle strade ed adattamento ai KM desiderati
+   * Genera 5 opzioni stradali reali distinte con nomi delle strade ed adattamento ai KM desiderati e waypoints
    */
-  async discoverRoutes(startName, endName, targetKm = 45) {
-    let startCoords = await this.geocodeLocation(startName) || [41.5956, 12.6525]; // Aprilia
-    let endCoords = await this.geocodeLocation(endName) || [41.7288, 12.6582];   // Albano
+  async discoverRoutes(startName, endName, targetKm = 45, explicitStartCoords = null, explicitEndCoords = null, customWaypoints = []) {
+    let startCoords = explicitStartCoords || await this.geocodeLocation(startName) || [41.5956, 12.6525]; // Aprilia
+    let endCoords = explicitEndCoords || await this.geocodeLocation(endName) || [41.7288, 12.6582];   // Albano
 
     const directDistKm = this.calculateHaversineDistance(startCoords, endCoords);
 
@@ -171,64 +171,94 @@ export class RouteExplorerEngine {
     const kmRatio = Math.max(1.0, targetKm / Math.max(10, directDistKm));
     const offsetScale = Math.min(0.25, 0.04 * kmRatio);
 
-    const via1 = null; 
+    // Vias per varianti
     const via2 = [midLat + dLng * offsetScale * 0.8 + 0.01, midLng - dLat * offsetScale * 0.8 - 0.01]; 
     const via3 = [midLat - dLng * offsetScale * 1.2 - 0.02, midLng + dLat * offsetScale * 1.2 + 0.02]; 
     const via4 = [midLat + dLng * offsetScale * 1.6 + 0.03, midLng - dLat * offsetScale * 1.6 - 0.02]; 
     const via5 = [midLat - dLng * offsetScale * 2.2 - 0.04, midLng + dLat * offsetScale * 2.2 + 0.04]; 
 
+    // Chiamata OSRM con alternative nativa e waypoints personalizzati
     const [raw1, raw2, raw3, raw4, raw5] = await Promise.all([
-      this.fetchOSRMRoute(startCoords, endCoords, via1),
-      this.fetchOSRMRoute(startCoords, endCoords, via2),
-      this.fetchOSRMRoute(startCoords, endCoords, via3),
-      this.fetchOSRMRoute(startCoords, endCoords, via4),
-      this.fetchOSRMRoute(startCoords, endCoords, via5)
+      this.fetchOSRMRoute(startCoords, endCoords, customWaypoints.length > 0 ? customWaypoints : null, true),
+      this.fetchOSRMRoute(startCoords, endCoords, customWaypoints.length > 0 ? customWaypoints : [via2]),
+      this.fetchOSRMRoute(startCoords, endCoords, customWaypoints.length > 0 ? customWaypoints : [via3]),
+      this.fetchOSRMRoute(startCoords, endCoords, customWaypoints.length > 0 ? customWaypoints : [via4]),
+      this.fetchOSRMRoute(startCoords, endCoords, customWaypoints.length > 0 ? customWaypoints : [via5])
     ]);
 
+    // Estrarre eventuali rotte alternative ritornate nativamente da OSRM (raw1.alternatives)
+    const alt1 = (raw1 && raw1.alternatives && raw1.alternatives[0]) ? raw1.alternatives[0] : null;
+    const alt2 = (raw1 && raw1.alternatives && raw1.alternatives[1]) ? raw1.alternatives[1] : null;
+
+    const route1Raw = raw1;
+    const route2Raw = alt1 || raw2 || raw1;
+    const route3Raw = alt2 || raw3 || raw1;
+    const route4Raw = raw4 || raw1;
+    const route5Raw = raw5 || raw1;
+
     const routes = await Promise.all([
-      this.buildRouteObject('opt-1', 'Arteria Principale Diretta', '#0ea5e9', raw1, startCoords, endCoords, 'Strada Principale'),
-      this.buildRouteObject('opt-2', 'Variante Secondaria Vicinale', '#10b981', raw2 || raw1, startCoords, endCoords, 'Strade Vicinali'),
-      this.buildRouteObject('opt-3', 'Percorso Collinare & Salite', '#8b5cf6', raw3 || raw1, startCoords, endCoords, 'Salita & Tornanti'),
-      this.buildRouteObject('opt-4', 'Tracciato Panoramico Esterno', '#06b6d4', raw4 || raw1, startCoords, endCoords, 'Provinciali Panoramiche'),
-      this.buildRouteObject('opt-5', 'Giro Esteso Fondo Pro', '#f43f5e', raw5 || raw1, startCoords, endCoords, 'Percorso Lungo')
+      this.buildRouteObject('opt-1', 'Arteria Principale Diretta (OSRM)', '#0ea5e9', route1Raw, startCoords, endCoords, 'Strada Principale'),
+      this.buildRouteObject('opt-2', 'Variante Secondaria Vicinale', '#10b981', route2Raw, startCoords, endCoords, 'Strade Vicinali'),
+      this.buildRouteObject('opt-3', 'Percorso Collinare & Salite', '#8b5cf6', route3Raw, startCoords, endCoords, 'Salita & Tornanti'),
+      this.buildRouteObject('opt-4', 'Tracciato Panoramico Esterno', '#06b6d4', route4Raw, startCoords, endCoords, 'Provinciali Panoramiche'),
+      this.buildRouteObject('opt-5', 'Giro Esteso Fondo Pro', '#f43f5e', route5Raw, startCoords, endCoords, 'Percorso Lungo')
     ]);
 
     return routes;
   }
 
-  async fetchOSRMRoute(startCoords, endCoords, viaCoords = null) {
-    let waypointsStr = `${startCoords[1]},${startCoords[0]}`;
-    if (viaCoords) {
-      waypointsStr += `;${viaCoords[1]},${viaCoords[0]}`;
+  /**
+   * Esegue la chiamata all'API OSRM supportando alternative e waypoints multipli
+   */
+  async fetchOSRMRoute(startCoords, endCoords, viaCoordsList = null, requestAlternatives = false) {
+    let waypoints = [startCoords];
+    if (Array.isArray(viaCoordsList)) {
+      waypoints.push(...viaCoordsList);
     }
-    waypointsStr += `;${endCoords[1]},${endCoords[0]}`;
+    waypoints.push(endCoords);
+
+    const waypointsStr = waypoints.map(pt => `${pt[1]},${pt[0]}`).join(';');
+    const altParam = requestAlternatives ? '&alternatives=3' : '';
 
     // Multiple public routing endpoints (OpenStreetMap Germany Bike & Standard OSRM Driving)
     const endpoints = [
-      `https://routing.openstreetmap.de/routed-bike/route/v1/biking/${waypointsStr}?overview=full&geometries=geojson&steps=true`,
-      `https://router.project-osrm.org/route/v1/driving/${waypointsStr}?overview=full&geometries=geojson&steps=true`
+      `https://routing.openstreetmap.de/routed-bike/route/v1/biking/${waypointsStr}?overview=full&geometries=geojson&steps=true${altParam}`,
+      `https://router.project-osrm.org/route/v1/driving/${waypointsStr}?overview=full&geometries=geojson&steps=true${altParam}`,
+      `https://routing.openstreetmap.de/routed-car/route/v1/driving/${waypointsStr}?overview=full&geometries=geojson&steps=true${altParam}`
     ];
 
     for (const url of endpoints) {
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 2500);
+        const timeoutId = setTimeout(() => controller.abort(), 3000);
         const res = await fetch(url, { signal: controller.signal });
         clearTimeout(timeoutId);
 
         if (res.ok) {
           const data = await res.json();
           if (data && data.code === 'Ok' && data.routes && data.routes.length > 0) {
-            const route = data.routes[0];
-            const leafletCoords = route.geometry.coordinates.map(coord => [coord[1], coord[0]]);
-            const streetNames = this.extractStreetNames(route.legs);
-
-            return {
-              distanceMeters: route.distance,
-              durationSeconds: route.duration,
-              coords: leafletCoords,
-              streetNames
+            const primary = data.routes[0];
+            const primaryResult = {
+              distanceMeters: primary.distance,
+              durationSeconds: primary.duration,
+              coords: primary.geometry.coordinates.map(coord => [coord[1], coord[0]]),
+              streetNames: this.extractStreetNames(primary.legs),
+              alternatives: []
             };
+
+            if (data.routes.length > 1) {
+              for (let i = 1; i < data.routes.length; i++) {
+                const altRoute = data.routes[i];
+                primaryResult.alternatives.push({
+                  distanceMeters: altRoute.distance,
+                  durationSeconds: altRoute.duration,
+                  coords: altRoute.geometry.coordinates.map(coord => [coord[1], coord[0]]),
+                  streetNames: this.extractStreetNames(altRoute.legs)
+                });
+              }
+            }
+
+            return primaryResult;
           }
         }
       } catch (err) {

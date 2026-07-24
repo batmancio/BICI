@@ -19,17 +19,17 @@ export class MapManager {
       attributionControl: false
     }).setView([41.5956, 12.6525], 11);
 
-    // Mappa Scura CARTO Rastertiles (URL ufficiale funzionante)
+    // Mappa Stradale OSM Standard (Affidabilità 100% su GitHub Pages senza blocchi CORS/AdBlock)
+    const cycleTileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap contributors'
+    });
+
+    // Mappa Scura CARTO Rastertiles
     const darkTileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}{r}.png', {
       maxZoom: 19,
       subdomains: 'abcd',
       attribution: '&copy; OpenStreetMap &copy; CARTO'
-    });
-
-    // Mappa Stradale OSM Standard (Massima affidabilità e leggibilità strade)
-    const cycleTileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '&copy; OpenStreetMap contributors'
     });
 
     // Mappa Ciclismo CyclOSM
@@ -38,21 +38,12 @@ export class MapManager {
       attribution: '&copy; OpenStreetMap &copy; CyclOSM'
     });
 
-    // Fallback automatico se i tile scuri non rispondono o vengono bloccati
-    darkTileLayer.on('tileerror', () => {
-      console.warn("Tile Scura non disponibile, passaggio alla Mappa Stradale OpenStreetMap.");
-      if (this.map.hasLayer(darkTileLayer)) {
-        this.map.removeLayer(darkTileLayer);
-        cycleTileLayer.addTo(this.map);
-      }
-    });
-
-    // Aggiunge la mappa scura di default
-    darkTileLayer.addTo(this.map);
+    // Aggiunge la Mappa Stradale OSM di default per massima affidabilità
+    cycleTileLayer.addTo(this.map);
 
     const baseMaps = {
+      "Mappa Stradale / OSM (Consigliata)": cycleTileLayer,
       "Mappa Scura Pro": darkTileLayer,
-      "Mappa Stradale / OSM": cycleTileLayer,
       "Mappa Ciclismo / CyclOSM": cyclOsmTileLayer
     };
     L.control.layers(baseMaps, null, { position: 'topright' }).addTo(this.map);
@@ -97,7 +88,7 @@ export class MapManager {
     }
   }
 
-  addStartEndMarkers(startLatLng, endLatLng) {
+  addStartEndMarkers(startLatLng, endLatLng, waypoints = []) {
     this.clearMarkers();
 
     const startIcon = L.divIcon({
@@ -116,8 +107,21 @@ export class MapManager {
 
     const startMarker = L.marker(startLatLng, { icon: startIcon }).addTo(this.map);
     const endMarker = L.marker(endLatLng, { icon: endIcon }).addTo(this.map);
-
     this.markerLayers.push(startMarker, endMarker);
+
+    // Renderizza eventuali Waypoint intermedi
+    if (Array.isArray(waypoints)) {
+      waypoints.forEach((wp, idx) => {
+        const wpIcon = L.divIcon({
+          className: 'custom-map-icon waypoint-icon',
+          html: `<div style="background: #8b5cf6; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 11px; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.4);">${idx + 1}</div>`,
+          iconSize: [24, 24],
+          iconAnchor: [12, 12]
+        });
+        const wpMarker = L.marker(wp, { icon: wpIcon }).addTo(this.map);
+        this.markerLayers.push(wpMarker);
+      });
+    }
   }
 
   renderRoutePolyline(coordinates, color, isSelected = false, routeId = '') {
