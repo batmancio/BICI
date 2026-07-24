@@ -1,5 +1,5 @@
 /* ==========================================================================
-   BIKEROUTE TRACKER - MAIN APPLICATION CONTROLLER
+   STRADE BIANCHE ROUTE PLANNER - MAIN CONTROLLER
    ========================================================================== */
 
 import { MapManager } from './map.js';
@@ -7,7 +7,78 @@ import { RouteExplorerEngine } from './routeExplorer.js';
 import { PlannerManager } from './planner.js';
 import { FitParserEngine } from './fitParser.js';
 import { AnalyticsManager } from './analysis.js';
-import { StravaSyncEngine } from './stravaSync.js';
+
+class FavoritesManager {
+  constructor() {
+    this.STORAGE_KEY_FAVS = 'STRADE_BIANCHE_FAVORITES_V1';
+    this.STORAGE_KEY_FOLDERS = 'STRADE_BIANCHE_FOLDERS_V1';
+    this.favorites = this.loadFavorites();
+    this.folders = this.loadFolders();
+    this.activeFolder = 'all';
+  }
+
+  loadFavorites() {
+    try {
+      const stored = localStorage.getItem(this.STORAGE_KEY_FAVS);
+      return stored ? JSON.parse(stored) : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  saveFavorites() {
+    try {
+      localStorage.setItem(this.STORAGE_KEY_FAVS, JSON.stringify(this.favorites));
+    } catch (e) {}
+  }
+
+  loadFolders() {
+    try {
+      const stored = localStorage.getItem(this.STORAGE_KEY_FOLDERS);
+      return stored ? JSON.parse(stored) : ['Gravel Toscana', 'Giri del Weekend', 'Salite Castelli'];
+    } catch (e) {
+      return ['Gravel Toscana', 'Giri del Weekend', 'Salite Castelli'];
+    }
+  }
+
+  saveFolders() {
+    try {
+      localStorage.setItem(this.STORAGE_KEY_FOLDERS, JSON.stringify(this.folders));
+    } catch (e) {}
+  }
+
+  isFavorite(routeId) {
+    return this.favorites.some(r => r.id === routeId);
+  }
+
+  toggleFavorite(route, folderName = 'Giri del Weekend') {
+    const idx = this.favorites.findIndex(r => r.id === route.id);
+    if (idx !== -1) {
+      this.favorites.splice(idx, 1);
+    } else {
+      const routeToSave = { ...route, folder: folderName, savedAt: new Date().toLocaleDateString('it-IT') };
+      this.favorites.push(routeToSave);
+    }
+    this.saveFavorites();
+    return this.isFavorite(route.id);
+  }
+
+  createFolder(name) {
+    if (!name || this.folders.includes(name)) return;
+    this.folders.push(name);
+    this.saveFolders();
+  }
+
+  getFavoritesByFolder(folder = 'all') {
+    if (folder === 'all') return this.favorites;
+    return this.favorites.filter(r => r.folder === folder);
+  }
+
+  removeFavorite(routeId) {
+    this.favorites = this.favorites.filter(r => r.id !== routeId);
+    this.saveFavorites();
+  }
+}
 
 function initApp() {
   const mapManager = new MapManager('map');
@@ -15,7 +86,7 @@ function initApp() {
   const plannerManager = new PlannerManager();
   const fitParserEngine = new FitParserEngine();
   const analyticsManager = new AnalyticsManager();
-  const stravaSyncEngine = new StravaSyncEngine();
+  const favoritesManager = new FavoritesManager();
 
   let activeRoutes = [];
   let selectedRouteId = null;
@@ -30,7 +101,6 @@ function initApp() {
   const btnQuickUpload = document.getElementById('btnQuickUpload');
   const fileInput = document.getElementById('fileInput');
   const dropZone = document.getElementById('dropZone');
-  const btnConnectStrava = document.getElementById('btnConnectStrava');
   const elevationCanvas = document.getElementById('elevationChart');
   const elevationPanel = document.getElementById('elevationPanel');
   const btnToggleChart = document.getElementById('btnToggleChart');
@@ -38,8 +108,8 @@ function initApp() {
   const navBtns = document.querySelectorAll('.nav-btn');
   const tabPanes = {
     explorer: document.getElementById('tabExplorer'),
-    analysis: document.getElementById('tabAnalysis'),
-    strava: document.getElementById('tabStrava')
+    favorites: document.getElementById('tabFavorites'),
+    analysis: document.getElementById('tabAnalysis')
   };
 
   navBtns.forEach(btn => {
@@ -49,28 +119,12 @@ function initApp() {
       btn.classList.add('active');
 
       Object.keys(tabPanes).forEach(key => {
-        tabPanes[key].style.display = (key === targetTab) ? 'block' : 'none';
+        if (tabPanes[key]) tabPanes[key].style.display = (key === targetTab) ? 'block' : 'none';
       });
 
       mapManager.refreshMapSize();
     });
   });
-
-  let clickState = 'start';
-
-  // Slider target KM
-  const sliderTargetKm = document.getElementById('sliderTargetKm');
-  const targetKmValue = document.getElementById('targetKmValue');
-
-  if (sliderTargetKm && targetKmValue) {
-    sliderTargetKm.addEventListener('input', (e) => {
-      targetKmValue.textContent = e.target.value;
-    });
-
-    sliderTargetKm.addEventListener('change', () => {
-      handleCalculateRoutes();
-    });
-  }
 
   // Setup Autocomplete per Input Partenza & Arrivo (Istantaneo da 1 carattere + Arricchimento online)
   setupAutocomplete(inputStart, startAutocomplete);

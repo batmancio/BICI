@@ -4,37 +4,37 @@
    ========================================================================== */
 
 :root {
-  /* WhatsApp Dark Mode Surface & Colors */
-  --bg-main: #0b141a;
-  --bg-sidebar: #111b21;
-  --bg-header: #202c33;
-  --bg-card: #202c33;
-  --bg-card-hover: #2a3942;
-  --bg-input: #111b21;
-  --bg-pill: #202c33;
-  --bg-pill-active: #005c4b;
+  /* Strade Bianche Historic Tuscan Race Palette */
+  --bg-main: #14110f;          /* Deep Tuscan Charcoal */
+  --bg-sidebar: #1d1815;       /* Siena Dark Earth */
+  --bg-header: #27211d;        /* Siena Header Surface */
+  --bg-card: #27211d;          /* Siena Card Surface */
+  --bg-card-hover: #332b26;    /* Warm Earth Hover */
+  --bg-input: #171311;         /* Dark Earth Input */
+  --bg-pill: #27211d;
+  --bg-pill-active: #c85a17;   /* Official Strade Bianche Terracotta */
   
-  --border-color: #222d34;
-  --border-light: #2a3942;
-  --border-focus: #00a884;
+  --border-color: #382f29;     /* Earth Border */
+  --border-light: #443a33;
+  --border-focus: #d96b27;     /* Terracotta Focus Glow */
   
-  /* Brand Accents - WhatsApp Emerald Green */
-  --brand-primary: #00a884;
-  --brand-primary-hover: #06cf9c;
-  --brand-accent: #25d366;
-  --brand-cyan: #38bdf8;
+  /* Strade Bianche Terracotta & Sun Accents */
+  --brand-primary: #d96b27;    /* Tuscan Terracotta Orange */
+  --brand-primary-hover: #e87a36;
+  --brand-accent: #e6b85c;     /* Tuscan Chalk Dust Gold */
+  --brand-cyan: #d96b27;
   
-  /* Slope / Difficulty Palette (Clean Functional Tones) */
-  --slope-flat: #00a884;    /* < 3% WhatsApp Emerald */
-  --slope-mild: #38bdf8;    /* 3-6% Cyan */
-  --slope-mod: #a855f7;     /* 6-9% Purple */
-  --slope-steep: #f15c6d;   /* 9-12% Coral Red */
-  --slope-wall: #ea4335;    /* > 12% Crimson */
+  /* Slope / Difficulty Palette (Harmonized Tuscan Tones) */
+  --slope-flat: #2e8b57;       /* Tuscan Cypress Green <3% */
+  --slope-mild: #e6b85c;       /* Dust Gold 3-6% */
+  --slope-mod: #d96b27;        /* Terracotta 6-9% */
+  --slope-steep: #c0392b;      /* Siena Red 9-12% */
+  --slope-wall: #7b1113;       /* Deep Burgundy >12% */
 
-  /* WhatsApp Typography Text Colors */
-  --text-main: #e9edef;
-  --text-muted: #8696a0;
-  --text-dim: #667781;
+  /* Typography Text Colors (Chalk & Dust) */
+  --text-main: #f5f0eb;        /* Chalk White */
+  --text-muted: #a89f91;       /* Tuscan Dust Beige */
+  --text-dim: #7e7568;         /* Earth Muted */
   
   /* Geometry & Radius */
   --radius-sm: 8px;
@@ -640,6 +640,12 @@ body {
   gap: 6px;
   overflow-x: auto;
   padding-bottom: 2px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.sort-filter-bar::-webkit-scrollbar {
+  display: none;
 }
 
 .filter-chip {
@@ -667,7 +673,59 @@ body {
 }
 
 /* ==========================================================================
-   MODAL OVERLAY & DETAILED POPUP WINDOW (WHATSAPP GLASSMORPHISM)
+   FAVORITES & CUSTOM FOLDERS STYLING
+   ========================================================================== */
+
+.fav-star-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 1.1rem;
+  padding: 4px;
+  transition: var(--transition-fast);
+}
+
+.fav-star-btn:hover, .fav-star-btn.active {
+  color: #f59e0b;
+  transform: scale(1.15);
+}
+
+.folder-chip-bar {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.folder-chip-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.folder-chip {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.folder-chip.active {
+  background-color: var(--brand-primary);
+  color: #14110f;
+  border-color: var(--brand-primary);
+}
+
+/* ==========================================================================
+   MODAL OVERLAY & DETAILED POPUP WINDOW
    ========================================================================== */
 
 .modal-overlay {
@@ -676,7 +734,7 @@ body {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(11, 20, 26, 0.75);
+  background-color: rgba(20, 17, 15, 0.85);
   backdrop-filter: blur(6px);
   z-index: 9999;
   display: none !important;
@@ -759,3 +817,86 @@ body {
   from { opacity: 0; transform: scale(0.98); }
   to { opacity: 1; transform: scale(1); }
 }
+
+/* ==========================================================================
+   RESPONSIVE DESIGN FOR MOBILE & TABLET (< 768px)
+   ========================================================================== */
+
+.mobile-view-toggle {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  body {
+    overflow: auto;
+  }
+
+  .app-header {
+    height: auto;
+    padding: 10px 14px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .brand-logo {
+    font-size: 1.05rem;
+  }
+
+  .nav-tabs {
+    width: 100%;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+  }
+  .nav-tabs::-webkit-scrollbar { display: none; }
+
+  .nav-btn {
+    padding: 6px 12px;
+    font-size: 0.76rem;
+    white-space: nowrap;
+  }
+
+  .header-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .app-main {
+    flex-direction: column;
+    height: calc(100vh - 110px);
+  }
+
+  .sidebar {
+    width: 100%;
+    min-width: 100%;
+    height: 60%;
+    order: 2;
+  }
+
+  .map-container-wrapper {
+    height: 40%;
+    min-height: 250px;
+    order: 1;
+  }
+
+  .floating-elevation-panel {
+    bottom: 8px;
+    left: 8px;
+    right: 8px;
+    height: 140px;
+    padding: 8px 10px;
+  }
+
+  .map-slope-legend {
+    top: 8px;
+    left: 8px;
+    padding: 6px 10px;
+    font-size: 0.68rem;
+  }
+
+  .modal-container {
+    max-height: 95vh;
+    padding: 14px;
+  }
+}
+

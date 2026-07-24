@@ -1100,11 +1100,76 @@
     }
   }
 
-  class StravaSyncEngine {
-    connectStravaAccount() {
-      return [
-        { name: "🚴 Pedalata Domenicale Castelli Romani", date: "20 Luglio 2026", distanceKm: 68.4, elevationGainM: 890, avgSpeedKmH: 24.8, device: "Bryton Rider 420" }
-      ];
+  // 5. FAVORITES & FOLDERS MANAGER (PERSISTENCE)
+  class FavoritesManager {
+    constructor() {
+      this.STORAGE_KEY_FAVS = 'STRADE_BIANCHE_FAVORITES_V1';
+      this.STORAGE_KEY_FOLDERS = 'STRADE_BIANCHE_FOLDERS_V1';
+      this.favorites = this.loadFavorites();
+      this.folders = this.loadFolders();
+      this.activeFolder = 'all';
+    }
+
+    loadFavorites() {
+      try {
+        const stored = localStorage.getItem(this.STORAGE_KEY_FAVS);
+        return stored ? JSON.parse(stored) : [];
+      } catch (e) {
+        return [];
+      }
+    }
+
+    saveFavorites() {
+      try {
+        localStorage.setItem(this.STORAGE_KEY_FAVS, JSON.stringify(this.favorites));
+      } catch (e) {}
+    }
+
+    loadFolders() {
+      try {
+        const stored = localStorage.getItem(this.STORAGE_KEY_FOLDERS);
+        return stored ? JSON.parse(stored) : ['Gravel Toscana', 'Giri del Weekend', 'Salite Castelli'];
+      } catch (e) {
+        return ['Gravel Toscana', 'Giri del Weekend', 'Salite Castelli'];
+      }
+    }
+
+    saveFolders() {
+      try {
+        localStorage.setItem(this.STORAGE_KEY_FOLDERS, JSON.stringify(this.folders));
+      } catch (e) {}
+    }
+
+    isFavorite(routeId) {
+      return this.favorites.some(r => r.id === routeId);
+    }
+
+    toggleFavorite(route, folderName = 'Giri del Weekend') {
+      const idx = this.favorites.findIndex(r => r.id === route.id);
+      if (idx !== -1) {
+        this.favorites.splice(idx, 1);
+      } else {
+        const routeToSave = { ...route, folder: folderName, savedAt: new Date().toLocaleDateString('it-IT') };
+        this.favorites.push(routeToSave);
+      }
+      this.saveFavorites();
+      return this.isFavorite(route.id);
+    }
+
+    createFolder(name) {
+      if (!name || this.folders.includes(name)) return;
+      this.folders.push(name);
+      this.saveFolders();
+    }
+
+    getFavoritesByFolder(folder = 'all') {
+      if (folder === 'all') return this.favorites;
+      return this.favorites.filter(r => r.folder === folder);
+    }
+
+    removeFavorite(routeId) {
+      this.favorites = this.favorites.filter(r => r.id !== routeId);
+      this.saveFavorites();
     }
   }
 
@@ -1115,13 +1180,18 @@
     const plannerManager = new PlannerManager();
     const fitParserEngine = new FitParserEngine();
     const analyticsManager = new AnalyticsManager();
-    const stravaSyncEngine = new StravaSyncEngine();
+    const favoritesManager = new FavoritesManager();
 
     let activeRoutes = [];
     let selectedRouteId = null;
+    let activeModalRoute = null;
 
     const btnCalculateRoutes = document.getElementById('btnCalculateRoutes');
     const routeCardsContainer = document.getElementById('routeCardsContainer');
+    const favoritesContainer = document.getElementById('favoritesContainer');
+    const folderFilterBar = document.getElementById('folderFilterBar');
+    const btnCreateFolder = document.getElementById('btnCreateFolder');
+
     const inputStart = document.getElementById('inputStart');
     const inputEnd = document.getElementById('inputEnd');
     const startAutocomplete = document.getElementById('startAutocomplete');
@@ -1130,7 +1200,6 @@
     const btnQuickUpload = document.getElementById('btnQuickUpload');
     const fileInput = document.getElementById('fileInput');
     const dropZone = document.getElementById('dropZone');
-    const btnConnectStrava = document.getElementById('btnConnectStrava');
     const elevationCanvas = document.getElementById('elevationChart');
     const elevationPanel = document.getElementById('elevationPanel');
     const btnToggleChart = document.getElementById('btnToggleChart');
@@ -1138,8 +1207,8 @@
     const navBtns = document.querySelectorAll('.nav-btn');
     const tabPanes = {
       explorer: document.getElementById('tabExplorer'),
-      analysis: document.getElementById('tabAnalysis'),
-      strava: document.getElementById('tabStrava')
+      favorites: document.getElementById('tabFavorites'),
+      analysis: document.getElementById('tabAnalysis')
     };
 
     navBtns.forEach(btn => {
@@ -1152,22 +1221,13 @@
           if (tabPanes[key]) tabPanes[key].style.display = (key === targetTab) ? 'block' : 'none';
         });
 
+        if (targetTab === 'favorites') {
+          renderFavoritesUI();
+        }
+
         mapManager.refreshMapSize();
       });
     });
-
-    let clickState = 'start';
-    const sliderTargetKm = document.getElementById('sliderTargetKm');
-    const targetKmValue = document.getElementById('targetKmValue');
-
-    if (sliderTargetKm && targetKmValue) {
-      sliderTargetKm.addEventListener('input', (e) => {
-        targetKmValue.textContent = e.target.value;
-      });
-      sliderTargetKm.addEventListener('change', () => {
-        handleCalculateRoutes();
-      });
-    }
 
     if (inputStart && startAutocomplete) setupAutocomplete(inputStart, startAutocomplete);
     if (inputEnd && endAutocomplete) setupAutocomplete(inputEnd, endAutocomplete);
@@ -1222,13 +1282,11 @@
           return;
         }
 
-        // 1. MOSTRA IMMEDIATAMENTE I SUGGERIMENTI LOCALI (0ms)
         const instantLocal = explorerEngine.getInstantSuggestions(val);
         if (instantLocal.length > 0) {
           drawDropdown(instantLocal, val);
         }
 
-        // 2. ARRICCHIMENTO ONLINE IN BACKGROUND
         try {
           const fullResults = await explorerEngine.searchAddressSuggestions(val);
           if (inputElem.value.trim().toLowerCase() === val.trim().toLowerCase()) {
@@ -1236,9 +1294,7 @@
               drawDropdown(fullResults, val);
             }
           }
-        } catch (e) {
-          // Fallback
-        }
+        } catch (e) {}
       };
 
       inputElem.addEventListener('input', (e) => {
@@ -1303,9 +1359,9 @@
     async function handleCalculateRoutes() {
       if (!routeCardsContainer) return;
       try {
-        const startVal = inputStart?.value.trim() || 'Aprilia';
-        const endVal = (currentRouteMode === 'loop') ? startVal : (inputEnd?.value.trim() || 'Albano Laziale');
-        const targetKm = parseInt(sliderTargetKm?.value || '45', 10);
+        const startVal = inputStart?.value.trim() || 'Siena';
+        const endVal = (currentRouteMode === 'loop') ? startVal : (inputEnd?.value.trim() || 'Asciano');
+        const targetKm = 45;
 
         let startCoords = null;
         let endCoords = null;
@@ -1320,7 +1376,7 @@
         routeCardsContainer.innerHTML = `
           <div style="text-align: center; padding: 36px 16px; color: var(--text-muted);">
             <i class="fa-solid fa-spinner fa-spin" style="font-size: 1.8rem; color: var(--brand-primary); margin-bottom: 12px;"></i>
-            <div style="font-weight: 600; color: var(--text-main); margin-bottom: 4px;">Calcolo 5 opzioni stradali...</div>
+            <div style="font-weight: 600; color: var(--text-main); margin-bottom: 4px;">Calcolo 5 opzioni stradali Strade Bianche...</div>
             <div style="font-size: 0.78rem;">Elaborazione arterie OSRM & profilatura altimetrica</div>
           </div>
         `;
@@ -1330,8 +1386,8 @@
 
         mapManager.clearRoutes();
         const firstRoute = activeRoutes[0];
-        const actualStartCoords = firstRoute?.startCoords || startCoords || [41.5956, 12.6525];
-        const actualEndCoords = firstRoute?.endCoords || endCoords || [41.7288, 12.6582];
+        const actualStartCoords = firstRoute?.startCoords || startCoords || [43.3188, 11.3308];
+        const actualEndCoords = firstRoute?.endCoords || endCoords || [43.2356, 11.5744];
 
         mapManager.addStartEndMarkers(actualStartCoords, actualEndCoords, customWaypoints);
 
@@ -1348,28 +1404,9 @@
       }
     };
 
-    mapManager.onMapClick((latLng) => {
-      const formattedCoord = `${latLng.lat.toFixed(4)}, ${latLng.lng.toFixed(4)}`;
-      if (clickState === 'start') {
-        inputStart.value = formattedCoord;
-        inputStart.dataset.lat = latLng.lat;
-        inputStart.dataset.lng = latLng.lng;
-        clickState = 'end';
-      } else if (clickState === 'end') {
-        inputEnd.value = formattedCoord;
-        inputEnd.dataset.lat = latLng.lat;
-        inputEnd.dataset.lng = latLng.lng;
-        clickState = 'waypoint';
-      } else {
-        customWaypoints.push([latLng.lat, latLng.lng]);
-      }
-      handleCalculateRoutes();
-    });
-
     if (btnCalculateRoutes) {
       btnCalculateRoutes.addEventListener('click', () => {
         customWaypoints = [];
-        clickState = 'start';
         handleCalculateRoutes();
       });
     }
@@ -1378,10 +1415,12 @@
     const btnCloseModal = document.getElementById('btnCloseModal');
     const btnModalCloseAction = document.getElementById('btnModalCloseAction');
     const btnModalExportGpx = document.getElementById('btnModalExportGpx');
+    const btnModalSaveFavorite = document.getElementById('btnModalSaveFavorite');
     const modalMultiMetricCanvas = document.getElementById('modalMultiMetricChart');
 
     function openRouteModal(route) {
       if (!route || !routeDetailModal) return;
+      activeModalRoute = route;
       document.getElementById('modalRouteTitle').textContent = route.name;
       document.getElementById('modalRouteColorPill').style.background = route.color;
       
@@ -1405,11 +1444,28 @@
 
       document.getElementById('modalStreetSummary').innerHTML = route.streetSummary || 'Strade provinciali e vicinali';
 
+      const isFav = favoritesManager.isFavorite(route.id);
+      if (btnModalSaveFavorite) {
+        btnModalSaveFavorite.innerHTML = `<i class="fa-${isFav ? 'solid' : 'regular'} fa-star" style="color: #f59e0b;"></i> ${isFav ? 'Nei Preferiti' : 'Salva nei Preferiti'}`;
+      }
+
       routeDetailModal.classList.add('active');
 
       if (modalMultiMetricCanvas) {
         analyticsManager.renderMultiMetricChart(modalMultiMetricCanvas, route.elevationProfile, route.color);
       }
+    }
+
+    if (btnModalSaveFavorite) {
+      btnModalSaveFavorite.addEventListener('click', () => {
+        if (!activeModalRoute) return;
+        const targetFolder = prompt("Scegli una cartella per questo percorso:", "Giri del Weekend") || "Giri del Weekend";
+        favoritesManager.toggleFavorite(activeModalRoute, targetFolder);
+        const isFav = favoritesManager.isFavorite(activeModalRoute.id);
+        btnModalSaveFavorite.innerHTML = `<i class="fa-${isFav ? 'solid' : 'regular'} fa-star" style="color: #f59e0b;"></i> ${isFav ? 'Nei Preferiti' : 'Salva nei Preferiti'}`;
+        renderTechnicalSpecCards(activeRoutes);
+        renderFavoritesUI();
+      });
     }
 
     function closeModal() {
@@ -1442,15 +1498,22 @@
           badgeText: 'Vicinale / Basso Traffico'
         };
 
+        const isFav = favoritesManager.isFavorite(route.id);
+
         card.innerHTML = `
           <div class="spec-card-header" style="margin-bottom: 6px;">
             <div class="route-name" style="font-size: 0.88rem;">
               <div class="route-color-pill" style="background: ${route.color}; width: 10px; height: 10px;"></div>
               ${route.name}
             </div>
-            <span class="badge ${safety.badgeClass}" style="font-size: 0.68rem; padding: 2px 7px;">
-              <i class="fa-solid ${safety.iconClass}"></i> ${safety.badgeText}
-            </span>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <button class="fav-star-btn ${isFav ? 'active' : ''}" title="Aggiungi ai preferiti">
+                <i class="fa-${isFav ? 'solid' : 'regular'} fa-star"></i>
+              </button>
+              <span class="badge ${safety.badgeClass}" style="font-size: 0.68rem; padding: 2px 7px;">
+                <i class="fa-solid ${safety.iconClass}"></i> ${safety.badgeText}
+              </span>
+            </div>
           </div>
 
           <div style="display: flex; justify-content: space-between; align-items: center; background: var(--bg-input); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color); border-left: 3px solid ${route.color};">
@@ -1465,12 +1528,129 @@
         `;
 
         card.addEventListener('click', (e) => {
+          if (e.target.closest('.fav-star-btn')) {
+            e.stopPropagation();
+            const folderName = prompt("Salva in quale cartella?", "Giri del Weekend") || "Giri del Weekend";
+            favoritesManager.toggleFavorite(route, folderName);
+            renderTechnicalSpecCards(routes);
+            renderFavoritesUI();
+            return;
+          }
+
           selectRoute(route.id);
           if (e.target.closest('.btn-open-detail')) {
             openRouteModal(route);
           }
         });
         routeCardsContainer.appendChild(card);
+      });
+    }
+
+    function renderFavoritesUI() {
+      if (!favoritesContainer || !folderFilterBar) return;
+      
+      // Render Folder Filter Bar
+      folderFilterBar.innerHTML = '';
+      const allBtn = document.createElement('button');
+      allBtn.className = `folder-chip ${favoritesManager.activeFolder === 'all' ? 'active' : ''}`;
+      allBtn.innerHTML = `<i class="fa-solid fa-folder"></i> Tutti (${favoritesManager.favorites.length})`;
+      allBtn.addEventListener('click', () => {
+        favoritesManager.activeFolder = 'all';
+        renderFavoritesUI();
+      });
+      folderFilterBar.appendChild(allBtn);
+
+      favoritesManager.folders.forEach(fName => {
+        const fRoutes = favoritesManager.getFavoritesByFolder(fName);
+        const btn = document.createElement('button');
+        btn.className = `folder-chip ${favoritesManager.activeFolder === fName ? 'active' : ''}`;
+        btn.innerHTML = `<i class="fa-solid fa-folder-open"></i> ${fName} (${fRoutes.length})`;
+        btn.addEventListener('click', () => {
+          favoritesManager.activeFolder = fName;
+          renderFavoritesUI();
+        });
+        folderFilterBar.appendChild(btn);
+      });
+
+      // Render Favorites Cards
+      const favList = favoritesManager.getFavoritesByFolder(favoritesManager.activeFolder);
+      if (favList.length === 0) {
+        favoritesContainer.innerHTML = `
+          <div style="padding: 24px 16px; text-align: center; color: var(--text-muted); background: var(--bg-card); border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+            <i class="fa-solid fa-star" style="font-size: 2rem; color: var(--brand-accent); margin-bottom: 10px;"></i>
+            <div style="font-weight: 700; font-size: 0.92rem; color: var(--text-main); margin-bottom: 4px;">Nessun percorso in questa cartella</div>
+            <div style="font-size: 0.78rem; line-height: 1.4; color: var(--text-muted);">
+              Salva nuove rotte dalla sezione Esplora cliccando sulla stella <i class="fa-solid fa-star" style="color: #f59e0b;"></i>.
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      favoritesContainer.innerHTML = '';
+      favList.forEach(route => {
+        const card = document.createElement('div');
+        card.className = 'spec-card selected';
+        card.innerHTML = `
+          <div class="spec-card-header" style="margin-bottom: 6px;">
+            <div class="route-name" style="font-size: 0.88rem;">
+              <i class="fa-solid fa-star" style="color: #f59e0b;"></i> ${route.name}
+            </div>
+            <span class="badge badge-low-traffic" style="font-size: 0.68rem;">
+              📁 ${route.folder || 'Generale'}
+            </span>
+          </div>
+
+          <div style="display: flex; justify-content: space-between; align-items: center; background: var(--bg-input); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color);">
+            <div style="display: flex; gap: 12px; font-size: 0.82rem; font-weight: 700;">
+              <span>${route.distanceKm} km</span>
+              <span>${route.elevationGainM}m D+</span>
+            </div>
+            <div style="display: flex; gap: 6px;">
+              <button class="btn btn-secondary btn-load-fav" style="padding: 3px 8px; font-size: 0.7rem;">
+                <i class="fa-solid fa-map"></i> Mappa
+              </button>
+              <button class="btn btn-primary btn-export-fav" style="padding: 3px 8px; font-size: 0.7rem;">
+                <i class="fa-solid fa-download"></i> GPX
+              </button>
+              <button class="btn btn-secondary btn-delete-fav" style="padding: 3px 6px; font-size: 0.7rem; color: #ef4444;">
+                <i class="fa-solid fa-trash"></i>
+              </button>
+            </div>
+          </div>
+        `;
+
+        card.querySelector('.btn-load-fav').addEventListener('click', () => {
+          activeRoutes = [route];
+          selectRoute(route.id);
+          mapManager.clearRoutes();
+          mapManager.renderRoutePolyline(route.coords, route.color, true, route.id);
+          mapManager.fitBoundsToRoutes();
+          document.querySelector('.nav-btn[data-tab="explorer"]')?.click();
+        });
+
+        card.querySelector('.btn-export-fav').addEventListener('click', () => {
+          plannerManager.setSelectedRoute(route);
+          plannerManager.exportToGpx();
+        });
+
+        card.querySelector('.btn-delete-fav').addEventListener('click', () => {
+          favoritesManager.removeFavorite(route.id);
+          renderFavoritesUI();
+          renderTechnicalSpecCards(activeRoutes);
+        });
+
+        favoritesContainer.appendChild(card);
+      });
+    }
+
+    if (btnCreateFolder) {
+      btnCreateFolder.addEventListener('click', () => {
+        const folderName = prompt("Inserisci il nome della nuova cartella:");
+        if (folderName && folderName.trim().length > 0) {
+          favoritesManager.createFolder(folderName.trim());
+          renderFavoritesUI();
+        }
       });
     }
 
@@ -1524,21 +1704,14 @@
         if (resElem) resElem.style.display = 'block';
 
         mapManager.clearRoutes();
-        mapManager.renderRoutePolyline(metrics.coords, '#0ea5e9', true, 'user-workout');
+        mapManager.renderRoutePolyline(metrics.coords, '#d96b27', true, 'user-workout');
         mapManager.fitBoundsToRoutes();
 
-        analyticsManager.renderElevationChart(elevationCanvas, metrics.elevationProfile, '#0ea5e9');
+        analyticsManager.renderElevationChart(elevationCanvas, metrics.elevationProfile, '#d96b27');
         document.querySelector('.nav-btn[data-tab="analysis"]')?.click();
       } catch (err) {
         alert("Errore nella lettura file: " + err.message);
       }
-    }
-
-    if (btnConnectStrava) {
-      btnConnectStrava.addEventListener('click', () => {
-        const activities = stravaSyncEngine.connectStravaAccount();
-        alert("Account Strava collegato con successo! Sincronizzazione uscite Bryton completata.");
-      });
     }
 
     if (btnToggleChart && elevationPanel) {

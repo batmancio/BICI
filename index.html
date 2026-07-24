@@ -3,14 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BICI - BikeRoute & Bryton 420 Analytics</title>
+  <title>Strade Bianche - Route Explorer & Cycling Analytics</title>
   
   <!-- FontAwesome Icons & Google Fonts -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="./node_modules/leaflet/dist/leaflet.css" />
   
   <!-- App Stylesheet -->
   <link rel="stylesheet" href="./styles/main.css">
@@ -18,35 +17,41 @@
 <body>
 
   <!-- ==========================================================================
-       HEADER NAVBAR
+       HEADER NAVBAR - STRADE BIANCHE BRANDING
        ========================================================================== -->
   <header class="app-header">
     <div class="brand-logo">
-      <i class="fa-solid fa-bicycle"></i>
-      <div class="brand-title">BICI <span>Analytics</span></div>
-      <div class="device-badge">
-        <i class="fa-solid fa-mobile-screen-button"></i> Bryton Rider 420
-      </div>
+      <svg class="cyclist-icon" viewBox="0 0 32 32" width="30" height="30" style="vertical-align: middle;">
+        <!-- Helmet -->
+        <path d="M6 14C6 9 9.5 5 16 5C22.5 5 26 9 26 14C26 15 25 15.5 23.5 15.5H8.5C7 15.5 6 15 6 14Z" fill="var(--brand-primary)"/>
+        <!-- Sunglasses / Visor -->
+        <path d="M8 15.5H24V18.5C24 19.5 23 20.5 21 20.5H11C9 20.5 8 19.5 8 18.5V15.5Z" fill="#14110f" stroke="var(--brand-accent)" stroke-width="1.2"/>
+        <!-- Chin & Neck Strap -->
+        <path d="M11 20.5V23.5C11 25.5 13.5 27 16 27C18.5 27 21 25.5 21 23.5V20.5" stroke="var(--brand-primary)" stroke-width="1.5" fill="none"/>
+        <!-- Cycling Collar -->
+        <path d="M5 29C7 26.5 11 25 16 25C21 25 25 26.5 27 29" stroke="var(--text-main)" stroke-width="2" fill="none" stroke-linecap="round"/>
+      </svg>
+      <div class="brand-title" style="letter-spacing: -0.5px;">Strade <span>Bianche</span></div>
     </div>
 
     <nav class="nav-tabs">
       <button class="nav-btn active" data-tab="explorer">
-        <i class="fa-solid fa-route"></i> Esplora & Pianifica
+        <i class="fa-solid fa-compass"></i> Esplora & Pianifica
+      </button>
+      <button class="nav-btn" data-tab="favorites">
+        <i class="fa-solid fa-star"></i> Preferiti & Cartelle
       </button>
       <button class="nav-btn" data-tab="analysis">
-        <i class="fa-solid fa-chart-line"></i> Analisi Bryton USB
-      </button>
-      <button class="nav-btn" data-tab="strava">
-        <i class="fa-brands fa-strava"></i> Strava Cloud
+        <i class="fa-solid fa-chart-line"></i> Analisi Telemetria
       </button>
     </nav>
 
     <div class="header-actions">
-      <button id="btnExportGpx" class="btn btn-primary" title="Scarica file GPX per il Bryton 420">
+      <button id="btnExportGpx" class="btn btn-primary" title="Scarica file GPX per il tuo ciclocomputer">
         <i class="fa-solid fa-download"></i> Export .GPX
       </button>
       <button id="btnQuickUpload" class="btn btn-secondary">
-        <i class="fa-solid fa-file-import"></i> Carica .FIT
+        <i class="fa-solid fa-file-import"></i> Carica .FIT / .GPX
       </button>
     </div>
   </header>
@@ -65,7 +70,6 @@
           
           <div class="section-title">
             <span>Calcolo Itinerari Stradali</span>
-            <span class="badge badge-low-traffic"><i class="fa-solid fa-map-pin"></i> OpenStreetMap & OSRM</span>
           </div>
 
           <!-- Selettore Modalità di Percorso -->
@@ -85,37 +89,17 @@
           <div class="route-inputs" style="margin-top: 8px;">
             <div class="input-group">
               <label><i class="fa-solid fa-location-dot" style="color: var(--brand-primary);"></i> Punto di Partenza (A)</label>
-              <input type="text" id="inputStart" class="input-field" placeholder="Scrivi una città o clicca sulla mappa..." value="" autocomplete="off">
+              <input type="text" id="inputStart" class="input-field" placeholder="Scrivi la città o l'indirizzo di partenza..." value="Siena" autocomplete="off">
               <div id="startAutocomplete" class="autocomplete-dropdown"></div>
             </div>
             <div class="input-group">
               <label><i class="fa-solid fa-flag-checkered" style="color: #ef4444;"></i> Punto di Arrivo (B)</label>
-              <input type="text" id="inputEnd" class="input-field" placeholder="Scrivi la destinazione..." value="" autocomplete="off">
+              <input type="text" id="inputEnd" class="input-field" placeholder="Scrivi la destinazione..." value="Asciano" autocomplete="off">
               <div id="endAutocomplete" class="autocomplete-dropdown"></div>
             </div>
             <button id="btnCalculateRoutes" class="btn btn-primary" style="width: 100%; justify-content: center; margin-top: 4px;">
               <i class="fa-solid fa-compass"></i> Calcola Percorsi Stradali
             </button>
-          </div>
-
-          <!-- Slider Chilometraggio Desiderato -->
-          <div class="preferences-panel" style="margin-top: 14px;">
-            <div class="section-title" style="font-size: 0.82rem; margin-bottom: 6px;">
-              <span>Distanza Target Desiderata</span>
-              <i class="fa-solid fa-ruler-horizontal" style="color: var(--brand-primary);"></i>
-            </div>
-            
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-              <span style="font-size: 0.78rem; color: var(--text-muted);">Target:</span>
-              <span style="font-weight: 700; color: var(--brand-primary); font-size: 0.95rem;"><span id="targetKmValue">45</span> km</span>
-            </div>
-
-            <input type="range" id="sliderTargetKm" min="15" max="120" step="5" value="45" style="width: 100%; accent-color: var(--brand-primary); cursor: pointer;">
-            <div style="display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--text-muted); margin-top: 4px;">
-              <span>15 km (Diretta)</span>
-              <span>60 km</span>
-              <span>120 km (Giro Lungo)</span>
-            </div>
           </div>
 
           <!-- Filtri e Ordinamento Schede -->
@@ -138,25 +122,50 @@
               <i class="fa-solid fa-map-location-dot" style="font-size: 2rem; color: var(--brand-primary); margin-bottom: 10px;"></i>
               <div style="font-weight: 700; font-size: 0.92rem; color: var(--text-main); margin-bottom: 4px;">Scegli l'itinerario ciclistico</div>
               <div style="font-size: 0.78rem; line-height: 1.4; color: var(--text-muted);">
-                Inserisci Partenza e Arrivo oppure <strong>clicca direttamente sulla mappa</strong> per definire i punti della tua pedalata.
+                Inserisci Partenza e Arrivo per elaborare le migliori opzioni per la tua pedalata.
               </div>
             </div>
           </div>
 
         </div>
 
-        <!-- TAB 2: ANALISI FIT BRYTON USB -->
+        <!-- TAB 2: PREFERITI & CARTELLE (PERSISTENZA LOCAL STORAGE) -->
+        <div id="tabFavorites" class="tab-pane" style="display: none;">
+          <div class="section-title" style="margin-bottom: 12px;">
+            <span>Cartelle & Percorsi Preferiti</span>
+            <button id="btnCreateFolder" class="btn btn-secondary" style="padding: 3px 8px; font-size: 0.72rem;">
+              <i class="fa-solid fa-folder-plus"></i> + Cartella
+            </button>
+          </div>
+
+          <!-- Filtro Cartelle -->
+          <div id="folderFilterBar" class="folder-chip-bar" style="margin-bottom: 14px;">
+            <button class="folder-chip active" data-folder="all"><i class="fa-solid fa-folder"></i> Tutti</button>
+          </div>
+
+          <!-- Lista Percorsi Salvati nei Preferiti -->
+          <div id="favoritesContainer" class="route-cards-list">
+            <div style="padding: 24px 16px; text-align: center; color: var(--text-muted); background: var(--bg-card); border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+              <i class="fa-solid fa-star" style="font-size: 2rem; color: var(--brand-accent); margin-bottom: 10px;"></i>
+              <div style="font-weight: 700; font-size: 0.92rem; color: var(--text-main); margin-bottom: 4px;">Nessun percorso nei preferiti</div>
+              <div style="font-size: 0.78rem; line-height: 1.4; color: var(--text-muted);">
+                Clicca sulla stella <i class="fa-solid fa-star" style="color: #f59e0b;"></i> su qualsiasi rotta calcolata per salvarla nelle tue cartelle personalizzate.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 3: ANALISI FIT / GPX USB -->
         <div id="tabAnalysis" class="tab-pane" style="display: none;">
           <div class="section-title">
-            <span>Analisi Allenamento Bryton 420</span>
-            <span class="badge badge-low-traffic"><i class="fa-solid fa-usb"></i> Connessione USB</span>
+            <span>Analisi Allenamento & Telemetria</span>
           </div>
 
           <!-- Upload Drag & Drop -->
           <div id="dropZone" class="upload-zone" style="margin-top: 16px;">
             <i class="fa-solid fa-file-circle-plus upload-icon"></i>
             <div class="upload-text">Trascina qui il file .FIT o .GPX</div>
-            <div class="upload-subtext">Collegato via USB? Cartella Bryton/Activity</div>
+            <div class="upload-subtext">Compatibile con Garmi, Bryton, Wahoo o Strava</div>
             <input type="file" id="fileInput" accept=".fit,.gpx" style="display: none;">
           </div>
 
@@ -164,7 +173,7 @@
           <div id="analysisResults" style="display: none; margin-top: 20px;">
             <div class="section-title" style="margin-bottom: 12px;">
               <span>Metriche Allenamento</span>
-              <span id="workoutDate" style="font-size: 0.75rem; color: var(--brand-cyan);">--/--/----</span>
+              <span id="workoutDate" style="font-size: 0.75rem; color: var(--brand-accent);">--/--/----</span>
             </div>
 
             <div class="spec-metrics-grid">
@@ -206,30 +215,6 @@
             </div>
           </div>
 
-        </div>
-
-        <!-- TAB 3: STRAVA CLOUD SYNC -->
-        <div id="tabStrava" class="tab-pane" style="display: none;">
-          <div class="section-title">
-            <span>Sincronizzazione Cloud Strava</span>
-            <i class="fa-brands fa-strava" style="color: var(--brand-primary);"></i>
-          </div>
-
-          <div class="spec-card" style="margin-top: 16px; cursor: default;">
-            <div class="route-name" style="margin-bottom: 8px;">
-              <i class="fa-solid fa-cloud-arrow-down" style="color: var(--brand-primary);"></i> Import Automatico Bryton
-            </div>
-            <p style="font-size: 0.82rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 14px;">
-              Collega il tuo account Strava per sincronizzare le uscite pedalate con il tuo Bryton Rider 420 tramite l'app Bryton Active.
-            </p>
-            <button id="btnConnectStrava" class="btn btn-primary" style="width: 100%; justify-content: center;">
-              <i class="fa-brands fa-strava"></i> Connetti Account Strava
-            </button>
-          </div>
-
-          <div id="stravaActivitiesList" style="margin-top: 18px; display: flex; flex-direction: column; gap: 10px;">
-            <!-- Attività caricate da Strava -->
-          </div>
         </div>
 
       </div>
@@ -352,10 +337,13 @@
       </div>
 
       <div class="modal-footer">
-        <button id="btnModalExportGpx" class="btn btn-primary" style="flex: 1; justify-content: center;">
-          <i class="fa-solid fa-download"></i> Esporta .GPX per Bryton 420
+        <button id="btnModalSaveFavorite" class="btn btn-secondary" style="padding: 8px 14px;">
+          <i class="fa-solid fa-star" style="color: #f59e0b;"></i> Salva nei Preferiti
         </button>
-        <button id="btnModalCloseAction" class="btn btn-secondary" style="padding: 8px 20px;">
+        <button id="btnModalExportGpx" class="btn btn-primary" style="flex: 1; justify-content: center;">
+          <i class="fa-solid fa-download"></i> Esporta .GPX
+        </button>
+        <button id="btnModalCloseAction" class="btn btn-secondary" style="padding: 8px 16px;">
           Chiudi
         </button>
       </div>
