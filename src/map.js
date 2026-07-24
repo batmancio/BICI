@@ -1,11 +1,13 @@
 /* ==========================================================================
    BIKEROUTE TRACKER - MAP MANAGER (LEAFLET.JS)
+   INCLUDES SLOPE GRADIENT POLYLINE & ATHLETIC MARKERS
    ========================================================================== */
 
 export class MapManager {
   constructor(containerId) {
     this.map = null;
     this.routeLayers = [];
+    this.selectedSlopeLayers = [];
     this.markerLayers = [];
     this.hoverMarker = null;
     this.initMap(containerId);
@@ -29,7 +31,7 @@ export class MapManager {
     darkTileLayer.addTo(this.map);
 
     const baseMaps = {
-      "Mappa Scura (Consigliata)": darkTileLayer,
+      "Mappa Scura": darkTileLayer,
       "Mappa Stradale / Ciclabile": cycleTileLayer
     };
     L.control.layers(baseMaps, null, { position: 'topright' }).addTo(this.map);
@@ -38,7 +40,13 @@ export class MapManager {
   clearRoutes() {
     this.routeLayers.forEach(layer => this.map.removeLayer(layer));
     this.routeLayers = [];
+    this.clearSlopeLayers();
     this.clearMarkers();
+  }
+
+  clearSlopeLayers() {
+    this.selectedSlopeLayers.forEach(layer => this.map.removeLayer(layer));
+    this.selectedSlopeLayers = [];
   }
 
   clearMarkers() {
@@ -55,16 +63,16 @@ export class MapManager {
 
     const startIcon = L.divIcon({
       className: 'custom-map-icon start-icon',
-      html: `<div style="background: #10b981; color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 2px solid white; box-shadow: 0 0 10px rgba(0,0,0,0.5);"><i class="fa-solid fa-play" style="font-size: 12px; margin-left: 2px;"></i></div>`,
-      iconSize: [32, 32],
-      iconAnchor: [16, 16]
+      html: `<div style="background: #10b981; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.4);"><i class="fa-solid fa-play" style="font-size: 11px; margin-left: 2px;"></i></div>`,
+      iconSize: [28, 28],
+      iconAnchor: [14, 14]
     });
 
     const endIcon = L.divIcon({
       className: 'custom-map-icon end-icon',
-      html: `<div style="background: #ef4444; color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 2px solid white; box-shadow: 0 0 10px rgba(0,0,0,0.5);"><i class="fa-solid fa-flag-checkered" style="font-size: 14px;"></i></div>`,
-      iconSize: [32, 32],
-      iconAnchor: [16, 16]
+      html: `<div style="background: #ef4444; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.4);"><i class="fa-solid fa-flag-checkered" style="font-size: 12px;"></i></div>`,
+      iconSize: [28, 28],
+      iconAnchor: [14, 14]
     });
 
     const startMarker = L.marker(startLatLng, { icon: startIcon }).addTo(this.map);
@@ -77,7 +85,7 @@ export class MapManager {
     const polyline = L.polyline(coordinates, {
       color: color,
       weight: isSelected ? 6 : 4,
-      opacity: isSelected ? 0.95 : 0.45,
+      opacity: isSelected ? 0.9 : 0.4,
       smoothFactor: 1
     }).addTo(this.map);
 
@@ -86,30 +94,80 @@ export class MapManager {
     return polyline;
   }
 
-  highlightRoute(routeId, primaryColor) {
+  /**
+   * Renderizza la rotta selezionata scomposta in segmenti colorati per PENDENZA (%)
+   */
+  highlightRouteWithSlope(routeId, primaryColor, elevationProfile = []) {
+    // Nascondi o abbassa opacità per gli altri layer
     this.routeLayers.forEach(layer => {
       if (layer.routeId === routeId) {
-        layer.setStyle({ weight: 7, opacity: 1, color: primaryColor });
-        layer.bringToFront();
+        layer.setStyle({ opacity: 0.15, weight: 3 });
       } else {
-        layer.setStyle({ weight: 4, opacity: 0.3 });
+        layer.setStyle({ weight: 3, opacity: 0.25 });
       }
     });
+
+    this.clearSlopeLayers();
+
+    const activeLayer = this.routeLayers.find(l => l.routeId === routeId);
+    if (!activeLayer) return;
+
+    const coords = activeLayer.getLatLngs();
+    if (!coords || coords.length < 2) return;
+
+    const profileCount = elevationProfile.length;
+    const stepRatio = (profileCount - 1) / (coords.length - 1);
+
+    for (let i = 0; i < coords.length - 1; i++) {
+      const p1 = coords[i];
+      const p2 = coords[i + 1];
+
+      let grade = 0;
+      if (profileCount >= 2) {
+        const idx1 = Math.min(Math.floor(i * stepRatio), profileCount - 1);
+        const idx2 = Math.min(Math.floor((i + 1) * stepRatio), profileCount - 1);
+        const ele1 = elevationProfile[idx1]?.elevationM || 0;
+        const ele2 = elevationProfile[idx2]?.elevationM || 0;
+        
+        const distM = p1.distanceTo(p2);
+        if (distM > 0) {
+          grade = ((ele2 - ele1) / distM) * 100;
+        }
+      }
+
+      const segmentColor = this.getSlopeColor(grade);
+
+      const segmentPolyline = L.polyline([p1, p2], {
+        color: segmentColor,
+        weight: 6,
+        opacity: 0.95
+      }).addTo(this.map);
+
+      this.selectedSlopeLayers.push(segmentPolyline);
+    }
+  }
+
+  getSlopeColor(grade) {
+    if (grade < 3) return '#10b981';      // Verde Menta (<3%)
+    if (grade < 6) return '#f59e0b';      // Giallo (3-6%)
+    if (grade < 9) return '#f97316';      // Arancio (6-9%)
+    if (grade < 12) return '#ef4444';     // Rosso (9-12%)
+    return '#9f1239';                     // Viola / Borgogna (>12%)
   }
 
   fitBoundsToRoutes() {
     if (this.routeLayers.length === 0) return;
     const group = new L.featureGroup(this.routeLayers);
-    this.map.fitBounds(group.getBounds(), { padding: [50, 50] });
+    this.map.fitBounds(group.getBounds(), { padding: [40, 40] });
   }
 
   updateHoverMarker(latLng) {
     if (!this.hoverMarker) {
       const hoverIcon = L.divIcon({
         className: 'hover-point-icon',
-        html: `<div style="background: #00f2fe; width: 16px; height: 16px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 12px #00f2fe;"></div>`,
-        iconSize: [16, 16],
-        iconAnchor: [8, 8]
+        html: `<div style="background: #fc5200; width: 14px; height: 14px; border-radius: 50%; border: 2.5px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.5);"></div>`,
+        iconSize: [14, 14],
+        iconAnchor: [7, 7]
       });
       this.hoverMarker = L.marker(latLng, { icon: hoverIcon }).addTo(this.map);
     } else {

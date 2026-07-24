@@ -7,7 +7,7 @@ export class AnalyticsManager {
     this.chartInstance = null;
   }
 
-  renderElevationChart(containerCanvas, profileData, routeColor, onPointHover = null) {
+  renderElevationChart(containerCanvas, profileData, routeColor = '#fc5200', onPointHover = null) {
     if (!containerCanvas) return;
 
     if (this.chartInstance) {
@@ -18,9 +18,9 @@ export class AnalyticsManager {
     const labels = profileData.map(p => `${p.distanceKm} km`);
     const elevations = profileData.map(p => p.elevationM);
 
-    const gradient = ctx.createLinearGradient(0, 0, 0, 180);
-    gradient.addColorStop(0, routeColor + '88');
-    gradient.addColorStop(1, 'rgba(15, 23, 42, 0.0)');
+    const gradient = ctx.createLinearGradient(0, 0, 0, 160);
+    gradient.addColorStop(0, 'rgba(252, 82, 0, 0.35)');
+    gradient.addColorStop(1, 'rgba(17, 23, 38, 0.0)');
 
     this.chartInstance = new Chart(ctx, {
       type: 'line',
@@ -29,14 +29,14 @@ export class AnalyticsManager {
         datasets: [{
           label: 'Altimetria (metri)',
           data: elevations,
-          borderColor: routeColor,
-          borderWidth: 3,
+          borderColor: '#fc5200',
+          borderWidth: 2.5,
           backgroundColor: gradient,
           fill: true,
           tension: 0.3,
           pointRadius: 0,
-          pointHoverRadius: 6,
-          pointHoverBackgroundColor: '#00f2fe',
+          pointHoverRadius: 5,
+          pointHoverBackgroundColor: '#fc5200',
           pointHoverBorderColor: '#ffffff',
           pointHoverBorderWidth: 2
         }]
@@ -51,9 +51,9 @@ export class AnalyticsManager {
         plugins: {
           legend: { display: false },
           tooltip: {
-            backgroundColor: '#0f172a',
+            backgroundColor: '#111726',
             titleColor: '#f8fafc',
-            bodyColor: '#00f2fe',
+            bodyColor: '#fc5200',
             borderColor: 'rgba(255, 255, 255, 0.1)',
             borderWidth: 1,
             padding: 10,
@@ -66,11 +66,11 @@ export class AnalyticsManager {
         },
         scales: {
           x: {
-            grid: { color: 'rgba(255, 255, 255, 0.04)' },
+            grid: { color: 'rgba(255, 255, 255, 0.03)' },
             ticks: { color: '#64748b', font: { size: 10 } }
           },
           y: {
-            grid: { color: 'rgba(255, 255, 255, 0.04)' },
+            grid: { color: 'rgba(255, 255, 255, 0.03)' },
             ticks: { color: '#64748b', font: { size: 10 } }
           }
         },

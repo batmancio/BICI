@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BikeRoute Tracker & Bryton 420 Analytics</title>
+  <title>BICI - BikeRoute & Bryton 420 Analytics</title>
   
   <!-- FontAwesome Icons & Google Fonts -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -22,9 +22,9 @@
   <header class="app-header">
     <div class="brand-logo">
       <i class="fa-solid fa-bicycle"></i>
-      <div class="brand-title">BikeRoute <span>Analytics</span></div>
+      <div class="brand-title">BICI <span>Analytics</span></div>
       <div class="device-badge">
-        <i class="fa-solid fa-microchip"></i> Bryton Rider 420
+        <i class="fa-solid fa-mobile-screen-button"></i> Bryton Rider 420
       </div>
     </div>
 
@@ -63,38 +63,40 @@
         <div id="tabExplorer" class="tab-pane active">
           
           <div class="section-title">
-            <span>Pianifica & Trova Rotte</span>
-            <span class="badge badge-low-traffic"><i class="fa-solid fa-road"></i> OSRM & OpenStreetMap</span>
+            <span>Calcolo Itinerari Stradali</span>
+            <span class="badge badge-low-traffic"><i class="fa-solid fa-map-pin"></i> OpenStreetMap & OSRM</span>
           </div>
 
-          <!-- Input Punti A e B -->
+          <!-- Input Punti A e B con Autocomplete -->
           <div class="route-inputs" style="margin-top: 12px;">
             <div class="input-group">
               <label><i class="fa-solid fa-location-dot" style="color: #10b981;"></i> Punto di Partenza (A)</label>
-              <input type="text" id="inputStart" class="input-field" placeholder="Es. Aprilia (o clicca sulla mappa)" value="Aprilia">
+              <input type="text" id="inputStart" class="input-field" placeholder="Es. Aprilia (o clicca sulla mappa)" value="Aprilia" autocomplete="off">
+              <div id="startAutocomplete" class="autocomplete-dropdown"></div>
             </div>
             <div class="input-group">
               <label><i class="fa-solid fa-flag-checkered" style="color: #ef4444;"></i> Punto di Arrivo (B)</label>
-              <input type="text" id="inputEnd" class="input-field" placeholder="Es. Albano Laziale (o clicca sulla mappa)" value="Albano Laziale">
+              <input type="text" id="inputEnd" class="input-field" placeholder="Es. Albano Laziale (o clicca sulla mappa)" value="Albano Laziale" autocomplete="off">
+              <div id="endAutocomplete" class="autocomplete-dropdown"></div>
             </div>
             <button id="btnCalculateRoutes" class="btn btn-primary" style="width: 100%; justify-content: center; margin-top: 4px;">
-              <i class="fa-solid fa-compass"></i> Calcola Tutte le Strade
+              <i class="fa-solid fa-compass"></i> Calcola Percorsi Stradali
             </button>
           </div>
 
           <!-- Slider Chilometraggio Desiderato -->
-          <div class="preferences-panel" style="margin-top: 16px;">
-            <div class="section-title" style="font-size: 0.85rem; margin-bottom: 8px;">
-              <span>Target Chilometraggio Desiderato</span>
-              <i class="fa-solid fa-ruler-horizontal" style="color: var(--brand-cyan);"></i>
+          <div class="preferences-panel" style="margin-top: 14px;">
+            <div class="section-title" style="font-size: 0.82rem; margin-bottom: 6px;">
+              <span>Distanza Target Desiderata</span>
+              <i class="fa-solid fa-ruler-horizontal" style="color: var(--brand-orange);"></i>
             </div>
             
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-              <span style="font-size: 0.8rem; color: var(--text-muted);">Distanza Target:</span>
-              <span style="font-weight: 700; color: var(--brand-cyan); font-size: 1rem;"><span id="targetKmValue">45</span> km</span>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+              <span style="font-size: 0.78rem; color: var(--text-muted);">Target:</span>
+              <span style="font-weight: 700; color: var(--brand-orange); font-size: 0.95rem;"><span id="targetKmValue">45</span> km</span>
             </div>
 
-            <input type="range" id="sliderTargetKm" min="15" max="120" step="5" value="45" style="width: 100%; accent-color: var(--brand-cyan); cursor: pointer;">
+            <input type="range" id="sliderTargetKm" min="15" max="120" step="5" value="45" style="width: 100%; accent-color: var(--brand-orange); cursor: pointer;">
             <div style="display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--text-muted); margin-top: 4px;">
               <span>15 km (Diretta)</span>
               <span>60 km</span>
@@ -103,15 +105,15 @@
           </div>
 
           <!-- Filtri e Ordinamento Schede -->
-          <div style="margin-top: 20px;">
+          <div style="margin-top: 18px;">
             <div class="section-title" style="margin-bottom: 10px;">
-              <span>5 Opzioni Stradali Trovate</span>
+              <span>Opzioni Trovate</span>
               <span id="routeCountBadge" class="badge badge-low-traffic">5 Strade Reali</span>
             </div>
 
             <div class="sort-filter-bar">
-              <button class="filter-chip active" data-sort="traffic"><i class="fa-solid fa-shield"></i> Meno Trafficata</button>
-              <button class="filter-chip" data-sort="elevation"><i class="fa-solid fa-chart-area"></i> Minor Dislivello</button>
+              <button class="filter-chip active" data-sort="traffic"><i class="fa-solid fa-road"></i> Arteria Principale</button>
+              <button class="filter-chip" data-sort="elevation"><i class="fa-solid fa-mountain"></i> Minor Dislivello</button>
               <button class="filter-chip" data-sort="distance"><i class="fa-solid fa-ruler-horizontal"></i> Più Breve</button>
             </div>
           </div>
@@ -134,15 +136,15 @@
           <div id="dropZone" class="upload-zone" style="margin-top: 16px;">
             <i class="fa-solid fa-file-circle-plus upload-icon"></i>
             <div class="upload-text">Trascina qui il file .FIT o .GPX</div>
-            <div class="upload-subtext">Collegato via USB? Trovi le uscite nella cartella Bryton/Activity</div>
+            <div class="upload-subtext">Collegato via USB? Cartella Bryton/Activity</div>
             <input type="file" id="fileInput" accept=".fit,.gpx" style="display: none;">
           </div>
 
           <!-- Risultati Analisi -->
           <div id="analysisResults" style="display: none; margin-top: 20px;">
             <div class="section-title" style="margin-bottom: 12px;">
-              <span>Metriche Reali Registrate</span>
-              <span id="workoutDate" style="font-size: 0.75rem; color: var(--brand-cyan);">--/--/----</span>
+              <span>Metriche Allenamento</span>
+              <span id="workoutDate" style="font-size: 0.75rem; color: var(--brand-orange);">--/--/----</span>
             </div>
 
             <div class="spec-metrics-grid">
@@ -174,12 +176,12 @@
 
             <!-- Scheda Valutazione Sforzo -->
             <div class="spec-card" style="margin-top: 12px; cursor: default;">
-              <div class="route-name" style="font-size: 0.9rem; margin-bottom: 6px;">
+              <div class="route-name" style="font-size: 0.88rem; margin-bottom: 6px;">
                 <i class="fa-solid fa-heart-pulse" style="color: var(--brand-orange);"></i> Valutazione Sforzo & Calorie
               </div>
-              <div style="font-size: 0.85rem; color: var(--text-muted);">
+              <div style="font-size: 0.82rem; color: var(--text-muted);">
                 Calorie Stimate: <strong id="resCalories" style="color: var(--text-main);">-- kcal</strong> |
-                Indice Sforzo: <strong id="resEffort" style="color: var(--brand-green);">Moderato</strong>
+                Indice Sforzo: <strong id="resEffort" style="color: var(--slope-flat);">Moderato</strong>
               </div>
             </div>
           </div>
@@ -195,9 +197,9 @@
 
           <div class="spec-card" style="margin-top: 16px; cursor: default;">
             <div class="route-name" style="margin-bottom: 8px;">
-              <i class="fa-solid fa-cloud-arrow-down" style="color: var(--brand-cyan);"></i> Import Automatico Bryton
+              <i class="fa-solid fa-cloud-arrow-down" style="color: var(--brand-orange);"></i> Import Automatico Bryton
             </div>
-            <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 14px;">
+            <p style="font-size: 0.82rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 14px;">
               Collega il tuo account Strava per sincronizzare le uscite pedalate con il tuo Bryton Rider 420 tramite l'app Bryton Active.
             </p>
             <button id="btnConnectStrava" class="btn btn-primary" style="width: 100%; justify-content: center;">
@@ -205,7 +207,7 @@
             </button>
           </div>
 
-          <div id="stravaActivitiesList" style="margin-top: 20px; display: flex; flex-direction: column; gap: 10px;">
+          <div id="stravaActivitiesList" style="margin-top: 18px; display: flex; flex-direction: column; gap: 10px;">
             <!-- Attività caricate da Strava -->
           </div>
         </div>
@@ -217,14 +219,26 @@
     <section class="map-container-wrapper">
       <div id="map"></div>
 
+      <!-- LEGENDA PENDENZE MAPPA -->
+      <div class="map-slope-legend">
+        <div class="slope-legend-title">Pendenza % Strada</div>
+        <div class="slope-legend-items">
+          <div class="slope-legend-item"><div class="slope-color-box" style="background: var(--slope-flat);"></div> &lt;3%</div>
+          <div class="slope-legend-item"><div class="slope-color-box" style="background: var(--slope-mild);"></div> 3-6%</div>
+          <div class="slope-legend-item"><div class="slope-color-box" style="background: var(--slope-mod);"></div> 6-9%</div>
+          <div class="slope-legend-item"><div class="slope-color-box" style="background: var(--slope-steep);"></div> 9-12%</div>
+          <div class="slope-legend-item"><div class="slope-color-box" style="background: var(--slope-wall);"></div> &gt;12%</div>
+        </div>
+      </div>
+
       <!-- GRAFICO ALTIMETRICO E PROFILO ROTTA (FLOATING PANEL) -->
       <div id="elevationPanel" class="floating-elevation-panel">
         <div class="chart-header">
           <div class="chart-title">
-            <i class="fa-solid fa-chart-area" style="color: var(--brand-cyan);"></i>
-            <span id="chartRouteTitle">Profilo Altimetrico & Superfici Strada</span>
+            <i class="fa-solid fa-chart-area" style="color: var(--brand-orange);"></i>
+            <span id="chartRouteTitle">Profilo Altimetrico & Pendenze</span>
           </div>
-          <button id="btnToggleChart" class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.75rem;">
+          <button id="btnToggleChart" class="btn btn-secondary" style="padding: 3px 10px; font-size: 0.75rem;">
             <i class="fa-solid fa-chevron-down"></i> Minimizza
           </button>
         </div>

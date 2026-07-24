@@ -24,6 +24,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const routeCardsContainer = document.getElementById('routeCardsContainer');
   const inputStart = document.getElementById('inputStart');
   const inputEnd = document.getElementById('inputEnd');
+  const startAutocomplete = document.getElementById('startAutocomplete');
+  const endAutocomplete = document.getElementById('endAutocomplete');
   const btnExportGpx = document.getElementById('btnExportGpx');
   const btnQuickUpload = document.getElementById('btnQuickUpload');
   const fileInput = document.getElementById('fileInput');
@@ -52,8 +54,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  let clickState = 'start'; // alternanza tra start ed end per il click sulla mappa
+  let clickState = 'start';
 
+  // Slider target KM
   const sliderTargetKm = document.getElementById('sliderTargetKm');
   const targetKmValue = document.getElementById('targetKmValue');
 
@@ -67,16 +70,58 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // Setup Autocomplete per Input Partenza & Arrivo
+  setupAutocomplete(inputStart, startAutocomplete);
+  setupAutocomplete(inputEnd, endAutocomplete);
+
+  function setupAutocomplete(inputElem, dropdownElem) {
+    let timeout = null;
+    inputElem.addEventListener('input', (e) => {
+      clearTimeout(timeout);
+      const val = e.target.value.trim();
+      if (val.length < 2) {
+        dropdownElem.style.display = 'none';
+        return;
+      }
+      timeout = setTimeout(async () => {
+        const results = await explorerEngine.searchAddressSuggestions(val);
+        if (results.length > 0) {
+          dropdownElem.innerHTML = '';
+          results.forEach(res => {
+            const item = document.createElement('div');
+            item.className = 'autocomplete-item';
+            item.textContent = res.displayName;
+            item.addEventListener('click', () => {
+              inputElem.value = res.displayName;
+              dropdownElem.style.display = 'none';
+              handleCalculateRoutes();
+            });
+            dropdownElem.appendChild(item);
+          });
+          dropdownElem.style.display = 'block';
+        } else {
+          dropdownElem.style.display = 'none';
+        }
+      }, 300);
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!inputElem.contains(e.target) && !dropdownElem.contains(e.target)) {
+        dropdownElem.style.display = 'none';
+      }
+    });
+  }
+
   const handleCalculateRoutes = async () => {
     const startVal = inputStart.value.trim() || 'Aprilia';
     const endVal = inputEnd.value.trim() || 'Albano Laziale';
     const targetKm = parseInt(sliderTargetKm?.value || '45', 10);
 
     routeCardsContainer.innerHTML = `
-      <div style="text-align: center; padding: 40px 20px; color: var(--text-muted);">
-        <i class="fa-solid fa-compass fa-spin" style="font-size: 2.2rem; color: var(--brand-cyan); margin-bottom: 14px;"></i>
-        <div style="font-weight: 600; color: white; margin-bottom: 6px;">Ricerca 5 Opzioni Stradali Reali...</div>
-        <div style="font-size: 0.8rem;">Analisi arterie stradali OSRM & altimetria Open-Meteo</div>
+      <div style="text-align: center; padding: 36px 16px; color: var(--text-muted);">
+        <i class="fa-solid fa-spinner fa-spin" style="font-size: 1.8rem; color: var(--brand-orange); margin-bottom: 12px;"></i>
+        <div style="font-weight: 600; color: white; margin-bottom: 4px;">Calcolo 5 opzioni stradali...</div>
+        <div style="font-size: 0.78rem;">Elaborazione arterie OSRM & profilatura altimetrica</div>
       </div>
     `;
 
@@ -102,7 +147,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  // Selezione punti cliccando direttamente sulla mappa
+  // Selezione punti cliccando sulla mappa
   mapManager.onMapClick((latLng) => {
     const formattedCoord = `${latLng.lat.toFixed(4)}, ${latLng.lng.toFixed(4)}`;
     if (clickState === 'start') {
@@ -134,12 +179,8 @@ document.addEventListener('DOMContentLoaded', () => {
           <span class="badge badge-low-traffic">${route.difficulty}</span>
         </div>
 
-        <div style="font-size: 0.8rem; color: var(--brand-cyan); margin-bottom: 6px; font-weight: 500;">
-          <i class="fa-solid fa-map-location-dot" style="color: ${route.color}"></i> ${route.categoryTag}
-        </div>
-
-        <div style="font-size: 0.75rem; color: var(--text-muted); background: rgba(255,255,255,0.05); padding: 8px 10px; border-radius: 6px; margin-bottom: 10px; border-left: 3px solid ${route.color};">
-          <i class="fa-solid fa-road" style="margin-right: 4px; color: var(--brand-yellow);"></i> 
+        <div style="font-size: 0.78rem; color: var(--text-muted); background: rgba(0,0,0,0.2); padding: 7px 10px; border-radius: 6px; margin-bottom: 10px; border-left: 3px solid ${route.color};">
+          <i class="fa-solid fa-road" style="margin-right: 4px; color: var(--brand-orange);"></i> 
           <strong>Itinerario:</strong> ${route.streetSummary}
         </div>
 
@@ -158,8 +199,8 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
         </div>
 
-        <div style="display: flex; justify-content: space-between; margin-top: 12px; font-size: 0.75rem; color: var(--text-muted); background: rgba(0,0,0,0.25); padding: 6px 10px; border-radius: 6px;">
-          <span>⏱️ @20km/h: <strong>${route.timeEstimates.speed20}</strong></span>
+        <div style="display: flex; justify-content: space-between; font-size: 0.73rem; color: var(--text-muted); background: rgba(0,0,0,0.2); padding: 5px 10px; border-radius: 6px;">
+          <span>@20km/h: <strong>${route.timeEstimates.speed20}</strong></span>
           <span>@25km/h: <strong>${route.timeEstimates.speed25}</strong></span>
           <span>@30km/h: <strong>${route.timeEstimates.speed30}</strong></span>
         </div>
@@ -181,7 +222,8 @@ document.addEventListener('DOMContentLoaded', () => {
       card.classList.toggle('selected', card.dataset.routeId === routeId);
     });
 
-    mapManager.highlightRoute(routeId, route.color);
+    // Renderizza la traccia selezionata con i colori per PENDENZA (%)
+    mapManager.highlightRouteWithSlope(routeId, route.color, route.elevationProfile);
 
     analyticsManager.renderElevationChart(elevationCanvas, route.elevationProfile, route.color, (hoverIdx) => {
       const coord = route.coords[Math.min(hoverIdx, route.coords.length - 1)];
@@ -196,7 +238,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const sortType = chip.getAttribute('data-sort');
       if (sortType === 'traffic') {
-        activeRoutes.sort((a, b) => a.trafficLevel.localeCompare(b.trafficLevel));
+        activeRoutes.sort((a, b) => a.id.localeCompare(b.id));
       } else if (sortType === 'elevation') {
         activeRoutes.sort((a, b) => a.elevationGainM - b.elevationGainM);
       } else if (sortType === 'distance') {
@@ -205,17 +247,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       renderTechnicalSpecCards(activeRoutes);
     });
-  });
-
-  document.querySelectorAll('.switch-group').forEach(group => {
-    group.querySelectorAll('.switch-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        group.querySelectorAll('.switch-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        handleCalculateRoutes();
-      });
-    });
-  });
+  }
 
   btnExportGpx.addEventListener('click', () => {
     plannerManager.exportToGpx();
@@ -280,10 +312,10 @@ document.addEventListener('DOMContentLoaded', () => {
       item.className = 'spec-card';
       item.innerHTML = `
         <div class="spec-card-header">
-          <div class="route-name" style="font-size: 0.95rem;">${act.name}</div>
+          <div class="route-name" style="font-size: 0.9rem;">${act.name}</div>
           <span class="badge badge-low-traffic">${act.date}</span>
         </div>
-        <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 8px;">
+        <div style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 8px;">
           Dispositivo: <strong style="color: var(--brand-orange);">${act.device}</strong>
         </div>
         <div class="spec-metrics-grid">

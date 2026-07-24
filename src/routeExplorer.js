@@ -1,6 +1,5 @@
 /* ==========================================================================
    BIKEROUTE TRACKER - ROUTE EXPLORER & TECHNICAL SPEC SHEET ENGINE
-   REAL ITALIAN ROAD ROUTING: 5 DISTINCT OPTIONS WITH STREET NAMES & KM SLIDER
    ========================================================================== */
 
 export class RouteExplorerEngine {
@@ -22,6 +21,26 @@ export class RouteExplorerEngine {
       'nettuno': [41.4586, 12.6631],
       'roma': [41.9028, 12.4964]
     };
+  }
+
+  /**
+   * Cerca suggerimenti indirizzo/città via Nominatim OSM
+   */
+  async searchAddressSuggestions(query) {
+    if (!query || query.trim().length < 2) return [];
+    try {
+      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&countrycodes=it`;
+      const res = await fetch(url, { headers: { 'Accept-Language': 'it,en' } });
+      const data = await res.json();
+      return (data || []).map(item => ({
+        displayName: item.display_name.split(',').slice(0, 3).join(','),
+        lat: parseFloat(item.lat),
+        lon: parseFloat(item.lon)
+      }));
+    } catch (err) {
+      console.warn("Autocomplete error:", err);
+      return [];
+    }
   }
 
   /**
@@ -66,25 +85,21 @@ export class RouteExplorerEngine {
 
     const directDistKm = this.calculateHaversineDistance(startCoords, endCoords);
 
-    // Calcolo punti medi e vettori di deviazione proporzionali al target KM dello slider
     const midLat = (startCoords[0] + endCoords[0]) / 2;
     const midLng = (startCoords[1] + endCoords[1]) / 2;
 
     const dLat = endCoords[0] - startCoords[0];
     const dLng = endCoords[1] - startCoords[1];
 
-    // Fattore di allungamento in base a targetKm rispetto alla distanza diretta
     const kmRatio = Math.max(1.0, targetKm / Math.max(10, directDistKm));
     const offsetScale = Math.min(0.25, 0.04 * kmRatio);
 
-    // 5 via-points per costringere OSRM su 5 corridoi stradali differenti
-    const via1 = null; // Diretta Principale (es. Nettunense)
-    const via2 = [midLat + dLng * offsetScale * 0.8 + 0.01, midLng - dLat * offsetScale * 0.8 - 0.01]; // Via Carano / Campoleone
-    const via3 = [midLat - dLng * offsetScale * 1.2 - 0.02, midLng + dLat * offsetScale * 1.2 + 0.02]; // Salite & Colline
-    const via4 = [midLat + dLng * offsetScale * 1.6 + 0.03, midLng - dLat * offsetScale * 1.6 - 0.02]; // Variante Panoramica Est
-    const via5 = [midLat - dLng * offsetScale * 2.2 - 0.04, midLng + dLat * offsetScale * 2.2 + 0.04]; // Giro Esteso / Anello Pro
+    const via1 = null; 
+    const via2 = [midLat + dLng * offsetScale * 0.8 + 0.01, midLng - dLat * offsetScale * 0.8 - 0.01]; 
+    const via3 = [midLat - dLng * offsetScale * 1.2 - 0.02, midLng + dLat * offsetScale * 1.2 + 0.02]; 
+    const via4 = [midLat + dLng * offsetScale * 1.6 + 0.03, midLng - dLat * offsetScale * 1.6 - 0.02]; 
+    const via5 = [midLat - dLng * offsetScale * 2.2 - 0.04, midLng + dLat * offsetScale * 2.2 + 0.04]; 
 
-    // Esegui 5 chiamate OSRM in parallelo
     const [raw1, raw2, raw3, raw4, raw5] = await Promise.all([
       this.fetchOSRMRoute(startCoords, endCoords, via1),
       this.fetchOSRMRoute(startCoords, endCoords, via2),
@@ -94,19 +109,16 @@ export class RouteExplorerEngine {
     ]);
 
     const routes = await Promise.all([
-      this.buildRouteObject('opt-1', 'Opzione 1: Arteria Principale Diretta', '#00f2fe', raw1 || raw1, startCoords, endCoords, 'Strada Statale / Principale'),
-      this.buildRouteObject('opt-2', 'Opzione 2: Variante Campagna & Carano', '#10b981', raw2 || raw1, startCoords, endCoords, 'Strade Secondarie & Vicinali'),
-      this.buildRouteObject('opt-3', 'Opzione 3: Variante Salite & Colline', '#8b5cf6', raw3 || raw1, startCoords, endCoords, 'Salite Collinari & Tornanti'),
-      this.buildRouteObject('opt-4', 'Opzione 4: Tracciato Panoramico Esterni', '#f59e0b', raw4 || raw1, startCoords, endCoords, 'Strade Provinciali Panoramiche'),
-      this.buildRouteObject('opt-5', 'Opzione 5: Giro Esteso / Anello Pro', '#ec4899', raw5 || raw1, startCoords, endCoords, 'Percorso Lungo / Allenamento')
+      this.buildRouteObject('opt-1', 'Arteria Principale Diretta', '#fc5200', raw1 || raw1, startCoords, endCoords, 'Strada Principale'),
+      this.buildRouteObject('opt-2', 'Variante Secondaria Vicinale', '#10b981', raw2 || raw1, startCoords, endCoords, 'Strade Vicinali'),
+      this.buildRouteObject('opt-3', 'Percorso Collinare & Salite', '#f59e0b', raw3 || raw1, startCoords, endCoords, 'Salita & Tornanti'),
+      this.buildRouteObject('opt-4', 'Tracciato Panoramico Esterno', '#3b82f6', raw4 || raw1, startCoords, endCoords, 'Provinciali Panoramiche'),
+      this.buildRouteObject('opt-5', 'Giro Esteso Fondo Pro', '#ec4899', raw5 || raw1, startCoords, endCoords, 'Percorso Lungo')
     ]);
 
     return routes;
   }
 
-  /**
-   * Fetch da OSRM Bike con dettagli sui passi stradali
-   */
   async fetchOSRMRoute(startCoords, endCoords, viaCoords = null) {
     try {
       let waypointsStr = `${startCoords[1]},${startCoords[0]}`;
@@ -122,8 +134,6 @@ export class RouteExplorerEngine {
       if (data && data.code === 'Ok' && data.routes && data.routes.length > 0) {
         const route = data.routes[0];
         const leafletCoords = route.geometry.coordinates.map(coord => [coord[1], coord[0]]);
-        
-        // Estrazione dei nomi delle strade dai passaggi OSRM
         const streetNames = this.extractStreetNames(route.legs);
 
         return {
@@ -139,9 +149,6 @@ export class RouteExplorerEngine {
     return null;
   }
 
-  /**
-   * Estrae i nomi reali delle strade principali attraversate nel percorso
-   */
   extractStreetNames(legs) {
     if (!legs) return [];
     const names = new Set();
@@ -162,20 +169,16 @@ export class RouteExplorerEngine {
     return Array.from(names);
   }
 
-  /**
-   * Costruisce la scheda tecnica del percorso stradale
-   */
   async buildRouteObject(id, name, color, rawOsrm, startCoords, endCoords, categoryTag) {
     let coords = [];
     let distanceKm = 0;
-    let streetSummary = "Strade provinciali e vicinali locali";
+    let streetSummary = "Strade provinciali e vicinali";
 
     if (rawOsrm && rawOsrm.coords && rawOsrm.coords.length > 1) {
       coords = rawOsrm.coords;
       distanceKm = parseFloat((rawOsrm.distanceMeters / 1000).toFixed(1));
       
       if (rawOsrm.streetNames && rawOsrm.streetNames.length > 0) {
-        // Prendi le prime 4-5 strade principali per mostrare l'itinerario reale
         streetSummary = rawOsrm.streetNames.slice(0, 4).join(' → ');
       }
     } else {
@@ -183,7 +186,6 @@ export class RouteExplorerEngine {
       distanceKm = parseFloat((this.calculateHaversineDistance(startCoords, endCoords) * 1.3).toFixed(1));
     }
 
-    // Profilo altimetrico reale da Open-Meteo
     const { elevationProfile, elevationGainM, elevationLossM, maxGradePercent, avgGradePercent } =
       await this.fetchElevationProfile(coords, distanceKm);
 
@@ -193,7 +195,7 @@ export class RouteExplorerEngine {
 
     let difficulty = 'Pianeggiante';
     if (elevationGainM > 550 || maxGradePercent > 8.0) {
-      difficulty = 'Impegnativo / Salite';
+      difficulty = 'Impegnativo / Salita';
     } else if (elevationGainM > 220 || maxGradePercent > 4.5) {
       difficulty = 'Ondulato / Collinare';
     }
@@ -218,9 +220,6 @@ export class RouteExplorerEngine {
     };
   }
 
-  /**
-   * Altimetria reale Open-Meteo
-   */
   async fetchElevationProfile(coords, totalDistanceKm) {
     const defaultRes = {
       elevationProfile: this.generateEstimatedElevationProfile(totalDistanceKm, 150),
@@ -232,7 +231,7 @@ export class RouteExplorerEngine {
 
     if (!coords || coords.length < 2) return defaultRes;
 
-    const sampleSize = Math.min(40, coords.length);
+    const sampleSize = Math.min(45, coords.length);
     const sampledCoords = [];
     const stepIndex = (coords.length - 1) / (sampleSize - 1);
 
