@@ -156,11 +156,45 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   let customWaypoints = [];
+  let currentRouteMode = 'oneway';
+
+  // Modalità di percorso (Solo Andata, A/R, Anello)
+  const modeBtns = document.querySelectorAll('.mode-btn');
+  modeBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      modeBtns.forEach(b => {
+        b.classList.remove('active');
+        b.style.background = 'transparent';
+        b.style.color = 'var(--text-muted)';
+      });
+      btn.classList.add('active');
+      btn.style.background = 'var(--bg-pill-active)';
+      btn.style.color = '#ffffff';
+
+      currentRouteMode = btn.dataset.mode || 'oneway';
+
+      if (currentRouteMode === 'loop') {
+        if (inputEnd) {
+          inputEnd.placeholder = "Giro ad Anello (coincide con la partenza)";
+          inputEnd.value = inputStart.value ? `${inputStart.value} (Anello)` : '';
+          inputEnd.disabled = true;
+        }
+      } else {
+        if (inputEnd) {
+          inputEnd.placeholder = "Scrivi la destinazione...";
+          if (inputEnd.value.includes('(Anello)')) inputEnd.value = '';
+          inputEnd.disabled = false;
+        }
+      }
+
+      handleCalculateRoutes();
+    });
+  });
 
   const handleCalculateRoutes = async () => {
     try {
       const startVal = inputStart.value.trim() || 'Aprilia';
-      const endVal = inputEnd.value.trim() || 'Albano Laziale';
+      const endVal = (currentRouteMode === 'loop') ? startVal : (inputEnd.value.trim() || 'Albano Laziale');
       const targetKm = parseInt(sliderTargetKm?.value || '45', 10);
 
       let startCoords = null;
@@ -169,7 +203,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (inputStart?.dataset.lat && inputStart?.dataset.lng) {
         startCoords = [parseFloat(inputStart.dataset.lat), parseFloat(inputStart.dataset.lng)];
       }
-      if (inputEnd?.dataset.lat && inputEnd?.dataset.lng) {
+      if (inputEnd?.dataset.lat && inputEnd?.dataset.lng && currentRouteMode !== 'loop') {
         endCoords = [parseFloat(inputEnd.dataset.lat), parseFloat(inputEnd.dataset.lng)];
       }
 
@@ -181,7 +215,7 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
       `;
 
-      activeRoutes = await explorerEngine.discoverRoutes(startVal, endVal, targetKm, startCoords, endCoords, customWaypoints);
+      activeRoutes = await explorerEngine.discoverRoutes(startVal, endVal, targetKm, startCoords, endCoords, customWaypoints, currentRouteMode);
       renderTechnicalSpecCards(activeRoutes);
 
       mapManager.clearRoutes();
@@ -229,7 +263,6 @@ document.addEventListener('DOMContentLoaded', () => {
       inputEnd.dataset.lng = latLng.lng;
       clickState = 'waypoint';
     } else {
-      // Click successivi aggiungono un waypoint intermedio
       customWaypoints.push([latLng.lat, latLng.lng]);
     }
     handleCalculateRoutes();
@@ -241,6 +274,57 @@ document.addEventListener('DOMContentLoaded', () => {
     handleCalculateRoutes();
   });
 
+  const routeDetailModal = document.getElementById('routeDetailModal');
+  const btnCloseModal = document.getElementById('btnCloseModal');
+  const btnModalCloseAction = document.getElementById('btnModalCloseAction');
+  const btnModalExportGpx = document.getElementById('btnModalExportGpx');
+  const modalMultiMetricCanvas = document.getElementById('modalMultiMetricChart');
+
+  function openRouteModal(route) {
+    if (!route || !routeDetailModal) return;
+    document.getElementById('modalRouteTitle').textContent = route.name;
+    document.getElementById('modalRouteColorPill').style.background = route.color;
+    
+    const safety = route.roadSafety || { badgeClass: 'badge-low-traffic', iconClass: 'fa-shield-halved', badgeText: 'Basso Traffico' };
+    const safetyBadge = document.getElementById('modalSafetyBadge');
+    if (safetyBadge) {
+      safetyBadge.className = `badge ${safety.badgeClass}`;
+      safetyBadge.innerHTML = `<i class="fa-solid ${safety.iconClass}"></i> ${safety.badgeText}`;
+    }
+
+    document.getElementById('modalDifficultyBadge').textContent = route.difficulty;
+    document.getElementById('modalCategoryBadge').textContent = route.categoryTag || 'Itinerario Ciclistico';
+
+    document.getElementById('modalDistVal').innerHTML = `${route.distanceKm} <span>km</span>`;
+    document.getElementById('modalElevGainVal').innerHTML = `${route.elevationGainM} <span>m</span>`;
+    document.getElementById('modalMaxGradeVal').textContent = `${route.maxGradePercent}%`;
+
+    document.getElementById('modalSpeed20').textContent = route.timeEstimates.speed20;
+    document.getElementById('modalSpeed25').textContent = route.timeEstimates.speed25;
+    document.getElementById('modalSpeed30').textContent = route.timeEstimates.speed30;
+
+    document.getElementById('modalStreetSummary').innerHTML = route.streetSummary || 'Strade provinciali e vicinali';
+
+    routeDetailModal.style.display = 'flex';
+
+    if (modalMultiMetricCanvas) {
+      analyticsManager.renderMultiMetricChart(modalMultiMetricCanvas, route.elevationProfile, route.color);
+    }
+  }
+
+  function closeModal() {
+    if (routeDetailModal) routeDetailModal.style.display = 'none';
+  }
+
+  if (btnCloseModal) btnCloseModal.addEventListener('click', closeModal);
+  if (btnModalCloseAction) btnModalCloseAction.addEventListener('click', closeModal);
+  if (btnModalExportGpx) btnModalExportGpx.addEventListener('click', () => plannerManager.exportToGpx());
+  if (routeDetailModal) {
+    routeDetailModal.addEventListener('click', (e) => {
+      if (e.target === routeDetailModal) closeModal();
+    });
+  }
+
   function renderTechnicalSpecCards(routes) {
     routeCardsContainer.innerHTML = '';
 
@@ -249,43 +333,40 @@ document.addEventListener('DOMContentLoaded', () => {
       card.className = `spec-card ${route.id === selectedRouteId ? 'selected' : ''}`;
       card.dataset.routeId = route.id;
 
+      const safety = route.roadSafety || {
+        badgeClass: 'badge-low-traffic',
+        iconClass: 'fa-shield-halved',
+        badgeText: 'Vicinale / Basso Traffico'
+      };
+
       card.innerHTML = `
-        <div class="spec-card-header">
-          <div class="route-name">
-            <div class="route-color-pill" style="background: ${route.color};"></div>
+        <div class="spec-card-header" style="margin-bottom: 6px;">
+          <div class="route-name" style="font-size: 0.88rem;">
+            <div class="route-color-pill" style="background: ${route.color}; width: 10px; height: 10px;"></div>
             ${route.name}
           </div>
-          <span class="badge badge-low-traffic">${route.difficulty}</span>
+          <span class="badge ${safety.badgeClass}" style="font-size: 0.68rem; padding: 2px 7px;">
+            <i class="fa-solid ${safety.iconClass}"></i> ${safety.badgeText}
+          </span>
         </div>
 
-        <div style="font-size: 0.78rem; color: var(--text-muted); background: var(--bg-input); padding: 7px 10px; border-radius: 6px; margin-bottom: 10px; border: 1px solid var(--border-color); border-left: 3px solid ${route.color};">
-          <i class="fa-solid fa-road" style="margin-right: 4px; color: var(--brand-primary);"></i> 
-          <strong>Itinerario:</strong> ${route.streetSummary}
-        </div>
-
-        <div class="spec-metrics-grid">
-          <div class="metric-box">
-            <div class="metric-val">${route.distanceKm} <span>km</span></div>
-            <div class="metric-lbl">Distanza</div>
+        <div style="display: flex; justify-content: space-between; align-items: center; background: var(--bg-input); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color); border-left: 3px solid ${route.color};">
+          <div style="display: flex; gap: 14px; font-size: 0.85rem; font-weight: 700;">
+            <span><i class="fa-solid fa-ruler-horizontal" style="color: var(--brand-primary); font-size: 0.75rem;"></i> ${route.distanceKm} km</span>
+            <span><i class="fa-solid fa-mountain" style="color: var(--brand-primary); font-size: 0.75rem;"></i> ${route.elevationGainM}m D+</span>
           </div>
-          <div class="metric-box">
-            <div class="metric-val">${route.elevationGainM} <span>m</span></div>
-            <div class="metric-lbl">Dislivello D+</div>
-          </div>
-          <div class="metric-box">
-            <div class="metric-val">${route.maxGradePercent}%</div>
-            <div class="metric-lbl">Pend. Max</div>
-          </div>
-        </div>
-
-        <div style="display: flex; justify-content: space-between; font-size: 0.73rem; color: var(--text-muted); background: var(--bg-input); padding: 5px 10px; border-radius: 6px; border: 1px solid var(--border-color);">
-          <span>@20km/h: <strong>${route.timeEstimates.speed20}</strong></span>
-          <span>@25km/h: <strong>${route.timeEstimates.speed25}</strong></span>
-          <span>@30km/h: <strong>${route.timeEstimates.speed30}</strong></span>
+          <button class="btn btn-secondary btn-open-detail" style="padding: 4px 10px; font-size: 0.72rem; border-radius: 4px;">
+            <i class="fa-solid fa-expand"></i> Dettagli
+          </button>
         </div>
       `;
 
-      card.addEventListener('click', () => selectRoute(route.id));
+      card.addEventListener('click', (e) => {
+        selectRoute(route.id);
+        if (e.target.closest('.btn-open-detail')) {
+          openRouteModal(route);
+        }
+      });
       routeCardsContainer.appendChild(card);
     });
   }

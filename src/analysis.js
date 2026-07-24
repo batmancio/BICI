@@ -83,6 +83,98 @@ export class AnalyticsManager {
           }
         }
       }
+  renderMultiMetricChart(containerCanvas, profileData, routeColor = '#0ea5e9', workoutData = null) {
+    if (!containerCanvas) return;
+
+    const ctx = containerCanvas.getContext('2d');
+    const labels = profileData.map(p => `${p.distanceKm}km`);
+    const elevations = profileData.map(p => p.elevationM);
+
+    // Stima o lettura telemetria reale (Velocità, Cadenza, Frequenza Cardiaca)
+    const speeds = workoutData?.speeds || profileData.map((p, i) => Math.round(24 + Math.sin(i / 3) * 6 + Math.cos(i / 2) * 3));
+    const cadences = workoutData?.cadences || profileData.map((p, i) => Math.round(82 + Math.sin(i / 2) * 12));
+    const heartRates = workoutData?.heartRates || profileData.map((p, i) => Math.round(145 + (p.elevationM > 200 ? 20 : 0) + Math.sin(i / 4) * 10));
+
+    new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [
+          {
+            label: 'Quota (m)',
+            data: elevations,
+            borderColor: '#94a3b8', // Linea grigio/argento dello screenshot
+            borderWidth: 1.5,
+            yAxisID: 'y1',
+            tension: 0.2,
+            pointRadius: 0
+          },
+          {
+            label: 'Velocità (km/h)',
+            data: speeds,
+            borderColor: '#f59e0b', // Linea gialla/arancio
+            borderWidth: 1.5,
+            yAxisID: 'y2',
+            tension: 0.2,
+            pointRadius: 0
+          },
+          {
+            label: 'Cadenza (rpm)',
+            data: cadences,
+            borderColor: '#22c55e', // Linea verde brillante
+            borderWidth: 1.2,
+            yAxisID: 'y2',
+            tension: 0.2,
+            pointRadius: 0
+          },
+          {
+            label: 'Frequenza C. (bpm)',
+            data: heartRates,
+            borderColor: '#3b82f6', // Linea blu
+            borderWidth: 1.5,
+            yAxisID: 'y1',
+            tension: 0.2,
+            pointRadius: 0
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: {
+            display: true,
+            labels: { color: '#8696a0', font: { size: 10 }, boxWidth: 12 }
+          },
+          tooltip: {
+            backgroundColor: '#111b21',
+            titleColor: '#e9edef',
+            borderColor: '#222d34',
+            borderWidth: 1
+          }
+        },
+        scales: {
+          x: {
+            grid: { color: 'rgba(255, 255, 255, 0.04)' },
+            ticks: { color: '#8696a0', font: { size: 9 } }
+          },
+          y1: {
+            type: 'linear',
+            position: 'left',
+            grid: { color: 'rgba(255, 255, 255, 0.04)' },
+            ticks: { color: '#8696a0', font: { size: 9 } },
+            title: { display: true, text: 'Quota (m) / HR (bpm)', color: '#8696a0', font: { size: 9 } }
+          },
+          y2: {
+            type: 'linear',
+            position: 'right',
+            grid: { drawOnChartArea: false },
+            ticks: { color: '#8696a0', font: { size: 9 } },
+            title: { display: true, text: 'Velocità (km/h) / Cadence (rpm)', color: '#8696a0', font: { size: 9 } }
+          }
+        }
+      }
     });
   }
 }

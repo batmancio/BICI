@@ -154,19 +154,22 @@ export class RouteExplorerEngine {
   }
 
   /**
-   * Genera 5 opzioni stradali reali distinte con nomi delle strade ed adattamento ai KM desiderati e waypoints
+   * Genera 5 opzioni stradali reali distinte con supporto a modalità (Solo Andata, A/R, Anello A->A) e sicurezza stradale
    */
-  async discoverRoutes(startName, endName, targetKm = 45, explicitStartCoords = null, explicitEndCoords = null, customWaypoints = []) {
+  async discoverRoutes(startName, endName, targetKm = 45, explicitStartCoords = null, explicitEndCoords = null, customWaypoints = [], routeMode = 'oneway') {
     let startCoords = explicitStartCoords || await this.geocodeLocation(startName) || [41.5956, 12.6525]; // Aprilia
-    let endCoords = explicitEndCoords || await this.geocodeLocation(endName) || [41.7288, 12.6582];   // Albano
+    let endCoords = (routeMode === 'loop') ? startCoords : (explicitEndCoords || await this.geocodeLocation(endName) || [41.7288, 12.6582]); // Albano
 
-    const directDistKm = this.calculateHaversineDistance(startCoords, endCoords);
+    let directDistKm = this.calculateHaversineDistance(startCoords, endCoords);
+    if (routeMode === 'loop') {
+      directDistKm = targetKm / 3;
+    }
 
-    const midLat = (startCoords[0] + endCoords[0]) / 2;
-    const midLng = (startCoords[1] + endCoords[1]) / 2;
+    const midLat = (routeMode === 'loop') ? startCoords[0] + 0.03 : (startCoords[0] + endCoords[0]) / 2;
+    const midLng = (routeMode === 'loop') ? startCoords[1] + 0.03 : (startCoords[1] + endCoords[1]) / 2;
 
-    const dLat = endCoords[0] - startCoords[0];
-    const dLng = endCoords[1] - startCoords[1];
+    const dLat = (routeMode === 'loop') ? 0.04 : endCoords[0] - startCoords[0];
+    const dLng = (routeMode === 'loop') ? 0.04 : endCoords[1] - startCoords[1];
 
     const kmRatio = Math.max(1.0, targetKm / Math.max(10, directDistKm));
     const offsetScale = Math.min(0.25, 0.04 * kmRatio);
@@ -196,15 +199,124 @@ export class RouteExplorerEngine {
     const route4Raw = raw4 || raw1;
     const route5Raw = raw5 || raw1;
 
+    // Palette colori ad alto contrasto per i tracciati
     const routes = await Promise.all([
-      this.buildRouteObject('opt-1', 'Arteria Principale Diretta (OSRM)', '#0ea5e9', route1Raw, startCoords, endCoords, 'Strada Principale'),
-      this.buildRouteObject('opt-2', 'Variante Secondaria Vicinale', '#10b981', route2Raw, startCoords, endCoords, 'Strade Vicinali'),
-      this.buildRouteObject('opt-3', 'Percorso Collinare & Salite', '#8b5cf6', route3Raw, startCoords, endCoords, 'Salita & Tornanti'),
-      this.buildRouteObject('opt-4', 'Tracciato Panoramico Esterno', '#06b6d4', route4Raw, startCoords, endCoords, 'Provinciali Panoramiche'),
-      this.buildRouteObject('opt-5', 'Giro Esteso Fondo Pro', '#f43f5e', route5Raw, startCoords, endCoords, 'Percorso Lungo')
+      this.buildRouteObject('opt-1', 'Arteria Principale Diretta (OSRM)', '#0ea5e9', route1Raw, startCoords, endCoords, 'Strada Principale', routeMode),
+      this.buildRouteObject('opt-2', 'Variante Secondaria Vicinale', '#10b981', route2Raw, startCoords, endCoords, 'Strade Vicinali', routeMode),
+      this.buildRouteObject('opt-3', 'Percorso Collinare & Salite', '#a855f7', route3Raw, startCoords, endCoords, 'Salita & Tornanti', routeMode),
+      this.buildRouteObject('opt-4', 'Tracciato Panoramico Esterno', '#f59e0b', route4Raw, startCoords, endCoords, 'Provinciali Panoramiche', routeMode),
+      this.buildRouteObject('opt-5', 'Giro Esteso Fondo Pro', '#f43f5e', route5Raw, startCoords, endCoords, 'Percorso Lungo', routeMode)
     ]);
 
     return routes;
+  }
+
+  /**
+   * Analizza i nomi delle strade e assegna un livello di warning per la sicurezza ciclistica
+   */
+  analyzeRoadSafety(streetNames = []) {
+    if (!streetNames || streetNames.length === 0) {
+      return {
+        level: 'safe',
+        badgeText: 'Tracciato Basso Traffico / Vicinale',
+        badgeClass: 'badge-low-traffic',
+        iconClass: 'fa-shield-halved'
+      };
+    }
+
+    const fullText = streetNames.join(' ').toLowerCase();
+
+    // Scansione per Strade Statali, Superstrade, Tangenziali, Pontina, SS
+    const dangerRegex = /\b(ss\d*|ss\s*\d+|pontina|superstrada|tangenziale|autostrada|statale|nazionale)\b/i;
+    const warningRegex = /\b(sp\d*|sp\s*\d+|provinciale|strada regionale|sr\d*)\b/i;
+
+    if (dangerRegex.test(fullText)) {
+      return {
+        level: 'danger',
+        badgeText: 'Attenzione: Strada Statale / Traffico Veloce',
+        badgeClass: 'badge-high-traffic',
+        iconClass: 'fa-triangle-exclamation'
+      };
+    }
+
+    if (warningRegex.test(fullText)) {
+      return {
+        level: 'warning',
+        badgeText: 'Strada Provinciale',
+        badgeClass: 'badge-med-traffic',
+        iconClass: 'fa-circle-info'
+      };
+    }
+
+    return {
+      level: 'safe',
+      badgeText: 'Tracciato Basso Traffico / Vicinale',
+      badgeClass: 'badge-low-traffic',
+      iconClass: 'fa-shield-halved'
+    };
+  }
+
+  async buildRouteObject(id, name, color, rawOsrm, startCoords, endCoords, categoryTag, routeMode = 'oneway') {
+    let coords = [];
+    let distanceKm = 0;
+    let streetSummary = "Strade provinciali e vicinali";
+    let rawStreetNames = [];
+
+    if (rawOsrm && rawOsrm.coords && rawOsrm.coords.length > 1) {
+      coords = rawOsrm.coords;
+      distanceKm = parseFloat((rawOsrm.distanceMeters / 1000).toFixed(1));
+      rawStreetNames = rawOsrm.streetNames || [];
+      if (rawStreetNames.length > 0) {
+        streetSummary = rawStreetNames.slice(0, 4).join(' → ');
+      }
+    } else {
+      coords = this.generateFallbackPath(startCoords, endCoords, id);
+      distanceKm = parseFloat((this.calculateHaversineDistance(startCoords, endCoords) * 1.3).toFixed(1));
+    }
+
+    // Gestione Andata e Ritorno
+    if (routeMode === 'roundtrip' && coords.length > 1) {
+      const reversedCoords = coords.slice().reverse();
+      coords = [...coords, ...reversedCoords];
+      distanceKm = parseFloat((distanceKm * 2).toFixed(1));
+    }
+
+    const roadSafety = this.analyzeRoadSafety(rawStreetNames);
+
+    const { elevationProfile, elevationGainM, elevationLossM, maxGradePercent, avgGradePercent } =
+      await this.fetchElevationProfile(coords, distanceKm);
+
+    const speed20 = this.formatDuration(distanceKm / 20);
+    const speed25 = this.formatDuration(distanceKm / 25);
+    const speed30 = this.formatDuration(distanceKm / 30);
+
+    let difficulty = 'Pianeggiante';
+    if (elevationGainM > 550 || maxGradePercent > 8.0) {
+      difficulty = 'Impegnativo / Salita';
+    } else if (elevationGainM > 220 || maxGradePercent > 4.5) {
+      difficulty = 'Ondulato / Collinare';
+    }
+
+    return {
+      id,
+      name,
+      color,
+      categoryTag,
+      streetSummary,
+      distanceKm,
+      elevationGainM,
+      elevationLossM,
+      maxGradePercent,
+      avgGradePercent,
+      difficulty,
+      roadSafety,
+      routeMode,
+      timeEstimates: { speed20, speed25, speed30 },
+      coords,
+      elevationProfile,
+      startCoords,
+      endCoords
+    };
   }
 
   /**

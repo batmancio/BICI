@@ -570,15 +570,19 @@
       return null;
     }
 
-    async discoverRoutes(startName, endName, targetKm = 45, explicitStartCoords = null, explicitEndCoords = null, customWaypoints = []) {
+    async discoverRoutes(startName, endName, targetKm = 45, explicitStartCoords = null, explicitEndCoords = null, customWaypoints = [], routeMode = 'oneway') {
       let startCoords = explicitStartCoords || await this.geocodeLocation(startName) || [41.5956, 12.6525];
-      let endCoords = explicitEndCoords || await this.geocodeLocation(endName) || [41.7288, 12.6582];
+      let endCoords = (routeMode === 'loop') ? startCoords : (explicitEndCoords || await this.geocodeLocation(endName) || [41.7288, 12.6582]);
 
-      const directDistKm = this.calculateHaversineDistance(startCoords, endCoords);
-      const midLat = (startCoords[0] + endCoords[0]) / 2;
-      const midLng = (startCoords[1] + endCoords[1]) / 2;
-      const dLat = endCoords[0] - startCoords[0];
-      const dLng = endCoords[1] - startCoords[1];
+      let directDistKm = this.calculateHaversineDistance(startCoords, endCoords);
+      if (routeMode === 'loop') {
+        directDistKm = targetKm / 3;
+      }
+
+      const midLat = (routeMode === 'loop') ? startCoords[0] + 0.03 : (startCoords[0] + endCoords[0]) / 2;
+      const midLng = (routeMode === 'loop') ? startCoords[1] + 0.03 : (startCoords[1] + endCoords[1]) / 2;
+      const dLat = (routeMode === 'loop') ? 0.04 : endCoords[0] - startCoords[0];
+      const dLng = (routeMode === 'loop') ? 0.04 : endCoords[1] - startCoords[1];
 
       const kmRatio = Math.max(1.0, targetKm / Math.max(10, directDistKm));
       const offsetScale = Math.min(0.25, 0.04 * kmRatio);
@@ -606,104 +610,82 @@
       const route5Raw = raw5 || raw1;
 
       const routes = await Promise.all([
-        this.buildRouteObject('opt-1', 'Arteria Principale Diretta (OSRM)', '#0ea5e9', route1Raw, startCoords, endCoords, 'Strada Principale'),
-        this.buildRouteObject('opt-2', 'Variante Secondaria Vicinale', '#10b981', route2Raw, startCoords, endCoords, 'Strade Vicinali'),
-        this.buildRouteObject('opt-3', 'Percorso Collinare & Salite', '#8b5cf6', route3Raw, startCoords, endCoords, 'Salita & Tornanti'),
-        this.buildRouteObject('opt-4', 'Tracciato Panoramico Esterno', '#06b6d4', route4Raw, startCoords, endCoords, 'Provinciali Panoramiche'),
-        this.buildRouteObject('opt-5', 'Giro Esteso Fondo Pro', '#f43f5e', route5Raw, startCoords, endCoords, 'Percorso Lungo')
+        this.buildRouteObject('opt-1', 'Arteria Principale Diretta (OSRM)', '#0ea5e9', route1Raw, startCoords, endCoords, 'Strada Principale', routeMode),
+        this.buildRouteObject('opt-2', 'Variante Secondaria Vicinale', '#10b981', route2Raw, startCoords, endCoords, 'Strade Vicinali', routeMode),
+        this.buildRouteObject('opt-3', 'Percorso Collinare & Salite', '#a855f7', route3Raw, startCoords, endCoords, 'Salita & Tornanti', routeMode),
+        this.buildRouteObject('opt-4', 'Tracciato Panoramico Esterno', '#f59e0b', route4Raw, startCoords, endCoords, 'Provinciali Panoramiche', routeMode),
+        this.buildRouteObject('opt-5', 'Giro Esteso Fondo Pro', '#f43f5e', route5Raw, startCoords, endCoords, 'Percorso Lungo', routeMode)
       ]);
 
       return routes;
     }
 
-    async fetchOSRMRoute(startCoords, endCoords, viaCoordsList = null, requestAlternatives = false) {
-      let waypoints = [startCoords];
-      if (Array.isArray(viaCoordsList)) {
-        waypoints.push(...viaCoordsList);
+    analyzeRoadSafety(streetNames = []) {
+      if (!streetNames || streetNames.length === 0) {
+        return {
+          level: 'safe',
+          badgeText: 'Tracciato Basso Traffico / Vicinale',
+          badgeClass: 'badge-low-traffic',
+          iconClass: 'fa-shield-halved'
+        };
       }
-      waypoints.push(endCoords);
 
-      const waypointsStr = waypoints.map(pt => `${pt[1]},${pt[0]}`).join(';');
-      const altParam = requestAlternatives ? '&alternatives=3' : '';
+      const fullText = streetNames.join(' ').toLowerCase();
 
-      const endpoints = [
-        `https://routing.openstreetmap.de/routed-bike/route/v1/biking/${waypointsStr}?overview=full&geometries=geojson&steps=true${altParam}`,
-        `https://router.project-osrm.org/route/v1/driving/${waypointsStr}?overview=full&geometries=geojson&steps=true${altParam}`,
-        `https://routing.openstreetmap.de/routed-car/route/v1/driving/${waypointsStr}?overview=full&geometries=geojson&steps=true${altParam}`
-      ];
+      const dangerRegex = /\b(ss\d*|ss\s*\d+|pontina|superstrada|tangenziale|autostrada|statale|nazionale)\b/i;
+      const warningRegex = /\b(sp\d*|sp\s*\d+|provinciale|strada regionale|sr\d*)\b/i;
 
-      for (const url of endpoints) {
-        try {
-          const controller = new AbortController();
-          const tid = setTimeout(() => controller.abort(), 3000);
-          const res = await fetch(url, { signal: controller.signal });
-          clearTimeout(tid);
-
-          if (res.ok) {
-            const data = await res.json();
-            if (data && data.code === 'Ok' && data.routes && data.routes.length > 0) {
-              const primary = data.routes[0];
-              const primaryResult = {
-                distanceMeters: primary.distance,
-                durationSeconds: primary.duration,
-                coords: primary.geometry.coordinates.map(coord => [coord[1], coord[0]]),
-                streetNames: this.extractStreetNames(primary.legs),
-                alternatives: []
-              };
-
-              if (data.routes.length > 1) {
-                for (let i = 1; i < data.routes.length; i++) {
-                  const altRoute = data.routes[i];
-                  primaryResult.alternatives.push({
-                    distanceMeters: altRoute.distance,
-                    durationSeconds: altRoute.duration,
-                    coords: altRoute.geometry.coordinates.map(coord => [coord[1], coord[0]]),
-                    streetNames: this.extractStreetNames(altRoute.legs)
-                  });
-                }
-              }
-
-              return primaryResult;
-            }
-          }
-        } catch (err) {
-          // Fallback
-        }
+      if (dangerRegex.test(fullText)) {
+        return {
+          level: 'danger',
+          badgeText: 'Attenzione: Strada Statale / Traffico Veloce',
+          badgeClass: 'badge-high-traffic',
+          iconClass: 'fa-triangle-exclamation'
+        };
       }
-      return null;
+
+      if (warningRegex.test(fullText)) {
+        return {
+          level: 'warning',
+          badgeText: 'Strada Provinciale',
+          badgeClass: 'badge-med-traffic',
+          iconClass: 'fa-circle-info'
+        };
+      }
+
+      return {
+        level: 'safe',
+        badgeText: 'Tracciato Basso Traffico / Vicinale',
+        badgeClass: 'badge-low-traffic',
+        iconClass: 'fa-shield-halved'
+      };
     }
 
-    extractStreetNames(legs) {
-      if (!legs) return [];
-      const names = new Set();
-      legs.forEach(leg => {
-        if (leg.steps) {
-          leg.steps.forEach(step => {
-            if (step.name && step.name.trim() !== '' && !step.name.includes('{') && step.name.length > 2) {
-              names.add(step.name.trim());
-            }
-            if (step.ref && step.ref.trim() !== '') names.add(step.ref.trim());
-          });
-        }
-      });
-      return Array.from(names);
-    }
-
-    async buildRouteObject(id, name, color, rawOsrm, startCoords, endCoords, categoryTag) {
+    async buildRouteObject(id, name, color, rawOsrm, startCoords, endCoords, categoryTag, routeMode = 'oneway') {
       let coords = [];
       let distanceKm = 0;
       let streetSummary = "Strade provinciali e vicinali";
+      let rawStreetNames = [];
 
       if (rawOsrm && rawOsrm.coords && rawOsrm.coords.length > 1) {
         coords = rawOsrm.coords;
         distanceKm = parseFloat((rawOsrm.distanceMeters / 1000).toFixed(1));
-        if (rawOsrm.streetNames && rawOsrm.streetNames.length > 0) {
-          streetSummary = rawOsrm.streetNames.slice(0, 4).join(' → ');
+        rawStreetNames = rawOsrm.streetNames || [];
+        if (rawStreetNames.length > 0) {
+          streetSummary = rawStreetNames.slice(0, 4).join(' → ');
         }
       } else {
         coords = this.generateFallbackPath(startCoords, endCoords, id);
         distanceKm = parseFloat((this.calculateHaversineDistance(startCoords, endCoords) * 1.3).toFixed(1));
       }
+
+      if (routeMode === 'roundtrip' && coords.length > 1) {
+        const reversedCoords = coords.slice().reverse();
+        coords = [...coords, ...reversedCoords];
+        distanceKm = parseFloat((distanceKm * 2).toFixed(1));
+      }
+
+      const roadSafety = this.analyzeRoadSafety(rawStreetNames);
 
       const { elevationProfile, elevationGainM, elevationLossM, maxGradePercent, avgGradePercent } =
         await this.fetchElevationProfile(coords, distanceKm);
@@ -722,6 +704,7 @@
       return {
         id, name, color, categoryTag, streetSummary, distanceKm,
         elevationGainM, elevationLossM, maxGradePercent, avgGradePercent, difficulty,
+        roadSafety, routeMode,
         timeEstimates: { speed20, speed25, speed30 }, coords, elevationProfile, startCoords, endCoords
       };
     }
@@ -963,12 +946,49 @@
           plugins: { legend: { display: false } },
           scales: {
             x: { grid: { color: 'rgba(255, 255, 255, 0.04)' }, ticks: { color: '#8696a0', font: { size: 10 } } },
-            y: { grid: { color: 'rgba(255, 255, 255, 0.04)' }, ticks: { color: '#8696a0', font: { size: 10 } } }
+          y: { grid: { color: 'rgba(255, 255, 255, 0.04)' }, ticks: { color: '#8696a0', font: { size: 10 } } }
+        },
+        onHover: (event, activeElements) => {
+          if (activeElements.length > 0 && onPointHover) {
+            onPointHover(activeElements[0].index);
+          }
+        }
+      });
+    }
+
+    renderMultiMetricChart(containerCanvas, profileData, routeColor = '#0ea5e9', workoutData = null) {
+      if (!containerCanvas || typeof Chart === 'undefined') return;
+
+      const ctx = containerCanvas.getContext('2d');
+      const labels = profileData.map(p => `${p.distanceKm}km`);
+      const elevations = profileData.map(p => p.elevationM);
+
+      const speeds = workoutData?.speeds || profileData.map((p, i) => Math.round(24 + Math.sin(i / 3) * 6 + Math.cos(i / 2) * 3));
+      const cadences = workoutData?.cadences || profileData.map((p, i) => Math.round(82 + Math.sin(i / 2) * 12));
+      const heartRates = workoutData?.heartRates || profileData.map((p, i) => Math.round(145 + (p.elevationM > 200 ? 20 : 0) + Math.sin(i / 4) * 10));
+
+      new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [
+            { label: 'Quota (m)', data: elevations, borderColor: '#94a3b8', borderWidth: 1.5, yAxisID: 'y1', tension: 0.2, pointRadius: 0 },
+            { label: 'Velocità (km/h)', data: speeds, borderColor: '#f59e0b', borderWidth: 1.5, yAxisID: 'y2', tension: 0.2, pointRadius: 0 },
+            { label: 'Cadenza (rpm)', data: cadences, borderColor: '#22c55e', borderWidth: 1.2, yAxisID: 'y2', tension: 0.2, pointRadius: 0 },
+            { label: 'Frequenza C. (bpm)', data: heartRates, borderColor: '#3b82f6', borderWidth: 1.5, yAxisID: 'y1', tension: 0.2, pointRadius: 0 }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: { display: true, labels: { color: '#8696a0', font: { size: 10 }, boxWidth: 12 } }
           },
-          onHover: (event, activeElements) => {
-            if (activeElements.length > 0 && onPointHover) {
-              onPointHover(activeElements[0].index);
-            }
+          scales: {
+            x: { grid: { color: 'rgba(255, 255, 255, 0.04)' }, ticks: { color: '#8696a0', font: { size: 9 } } },
+            y1: { type: 'linear', position: 'left', grid: { color: 'rgba(255, 255, 255, 0.04)' }, ticks: { color: '#8696a0', font: { size: 9 } } },
+            y2: { type: 'linear', position: 'right', grid: { drawOnChartArea: false }, ticks: { color: '#8696a0', font: { size: 9 } } }
           }
         }
       });
@@ -1114,12 +1134,45 @@
     }
 
     let customWaypoints = [];
+    let currentRouteMode = 'oneway';
+
+    const modeBtns = document.querySelectorAll('.mode-btn');
+    modeBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        modeBtns.forEach(b => {
+          b.classList.remove('active');
+          b.style.background = 'transparent';
+          b.style.color = 'var(--text-muted)';
+        });
+        btn.classList.add('active');
+        btn.style.background = 'var(--bg-pill-active)';
+        btn.style.color = '#ffffff';
+
+        currentRouteMode = btn.dataset.mode || 'oneway';
+
+        if (currentRouteMode === 'loop') {
+          if (inputEnd) {
+            inputEnd.placeholder = "Giro ad Anello (coincide con la partenza)";
+            inputEnd.value = inputStart.value ? `${inputStart.value} (Anello)` : '';
+            inputEnd.disabled = true;
+          }
+        } else {
+          if (inputEnd) {
+            inputEnd.placeholder = "Scrivi la destinazione...";
+            if (inputEnd.value.includes('(Anello)')) inputEnd.value = '';
+            inputEnd.disabled = false;
+          }
+        }
+
+        handleCalculateRoutes();
+      });
+    });
 
     const handleCalculateRoutes = async () => {
       if (!routeCardsContainer) return;
       try {
         const startVal = inputStart?.value.trim() || 'Aprilia';
-        const endVal = inputEnd?.value.trim() || 'Albano Laziale';
+        const endVal = (currentRouteMode === 'loop') ? startVal : (inputEnd?.value.trim() || 'Albano Laziale');
         const targetKm = parseInt(sliderTargetKm?.value || '45', 10);
 
         let startCoords = null;
@@ -1128,7 +1181,7 @@
         if (inputStart?.dataset.lat && inputStart?.dataset.lng) {
           startCoords = [parseFloat(inputStart.dataset.lat), parseFloat(inputStart.dataset.lng)];
         }
-        if (inputEnd?.dataset.lat && inputEnd?.dataset.lng) {
+        if (inputEnd?.dataset.lat && inputEnd?.dataset.lng && currentRouteMode !== 'loop') {
           endCoords = [parseFloat(inputEnd.dataset.lat), parseFloat(inputEnd.dataset.lng)];
         }
 
@@ -1140,7 +1193,7 @@
           </div>
         `;
 
-        activeRoutes = await explorerEngine.discoverRoutes(startVal, endVal, targetKm, startCoords, endCoords, customWaypoints);
+        activeRoutes = await explorerEngine.discoverRoutes(startVal, endVal, targetKm, startCoords, endCoords, customWaypoints, currentRouteMode);
         renderTechnicalSpecCards(activeRoutes);
 
         mapManager.clearRoutes();
@@ -1189,6 +1242,57 @@
       });
     }
 
+    const routeDetailModal = document.getElementById('routeDetailModal');
+    const btnCloseModal = document.getElementById('btnCloseModal');
+    const btnModalCloseAction = document.getElementById('btnModalCloseAction');
+    const btnModalExportGpx = document.getElementById('btnModalExportGpx');
+    const modalMultiMetricCanvas = document.getElementById('modalMultiMetricChart');
+
+    function openRouteModal(route) {
+      if (!route || !routeDetailModal) return;
+      document.getElementById('modalRouteTitle').textContent = route.name;
+      document.getElementById('modalRouteColorPill').style.background = route.color;
+      
+      const safety = route.roadSafety || { badgeClass: 'badge-low-traffic', iconClass: 'fa-shield-halved', badgeText: 'Basso Traffico' };
+      const safetyBadge = document.getElementById('modalSafetyBadge');
+      if (safetyBadge) {
+        safetyBadge.className = `badge ${safety.badgeClass}`;
+        safetyBadge.innerHTML = `<i class="fa-solid ${safety.iconClass}"></i> ${safety.badgeText}`;
+      }
+
+      document.getElementById('modalDifficultyBadge').textContent = route.difficulty;
+      document.getElementById('modalCategoryBadge').textContent = route.categoryTag || 'Itinerario Ciclistico';
+
+      document.getElementById('modalDistVal').innerHTML = `${route.distanceKm} <span>km</span>`;
+      document.getElementById('modalElevGainVal').innerHTML = `${route.elevationGainM} <span>m</span>`;
+      document.getElementById('modalMaxGradeVal').textContent = `${route.maxGradePercent}%`;
+
+      document.getElementById('modalSpeed20').textContent = route.timeEstimates.speed20;
+      document.getElementById('modalSpeed25').textContent = route.timeEstimates.speed25;
+      document.getElementById('modalSpeed30').textContent = route.timeEstimates.speed30;
+
+      document.getElementById('modalStreetSummary').innerHTML = route.streetSummary || 'Strade provinciali e vicinali';
+
+      routeDetailModal.style.display = 'flex';
+
+      if (modalMultiMetricCanvas) {
+        analyticsManager.renderMultiMetricChart(modalMultiMetricCanvas, route.elevationProfile, route.color);
+      }
+    }
+
+    function closeModal() {
+      if (routeDetailModal) routeDetailModal.style.display = 'none';
+    }
+
+    if (btnCloseModal) btnCloseModal.addEventListener('click', closeModal);
+    if (btnModalCloseAction) btnModalCloseAction.addEventListener('click', closeModal);
+    if (btnModalExportGpx) btnModalExportGpx.addEventListener('click', () => plannerManager.exportToGpx());
+    if (routeDetailModal) {
+      routeDetailModal.addEventListener('click', (e) => {
+        if (e.target === routeDetailModal) closeModal();
+      });
+    }
+
     function renderTechnicalSpecCards(routes) {
       if (!routeCardsContainer) return;
       routeCardsContainer.innerHTML = '';
@@ -1198,43 +1302,40 @@
         card.className = `spec-card ${route.id === selectedRouteId ? 'selected' : ''}`;
         card.dataset.routeId = route.id;
 
+        const safety = route.roadSafety || {
+          badgeClass: 'badge-low-traffic',
+          iconClass: 'fa-shield-halved',
+          badgeText: 'Vicinale / Basso Traffico'
+        };
+
         card.innerHTML = `
-          <div class="spec-card-header">
-            <div class="route-name">
-              <div class="route-color-pill" style="background: ${route.color};"></div>
+          <div class="spec-card-header" style="margin-bottom: 6px;">
+            <div class="route-name" style="font-size: 0.88rem;">
+              <div class="route-color-pill" style="background: ${route.color}; width: 10px; height: 10px;"></div>
               ${route.name}
             </div>
-            <span class="badge badge-low-traffic">${route.difficulty}</span>
+            <span class="badge ${safety.badgeClass}" style="font-size: 0.68rem; padding: 2px 7px;">
+              <i class="fa-solid ${safety.iconClass}"></i> ${safety.badgeText}
+            </span>
           </div>
 
-          <div style="font-size: 0.78rem; color: var(--text-muted); background: var(--bg-input); padding: 7px 10px; border-radius: 6px; margin-bottom: 10px; border: 1px solid var(--border-color); border-left: 3px solid ${route.color};">
-            <i class="fa-solid fa-road" style="margin-right: 4px; color: var(--brand-primary);"></i> 
-            <strong>Itinerario:</strong> ${route.streetSummary}
-          </div>
-
-          <div class="spec-metrics-grid">
-            <div class="metric-box">
-              <div class="metric-val">${route.distanceKm} <span>km</span></div>
-              <div class="metric-lbl">Distanza</div>
+          <div style="display: flex; justify-content: space-between; align-items: center; background: var(--bg-input); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color); border-left: 3px solid ${route.color};">
+            <div style="display: flex; gap: 14px; font-size: 0.85rem; font-weight: 700;">
+              <span><i class="fa-solid fa-ruler-horizontal" style="color: var(--brand-primary); font-size: 0.75rem;"></i> ${route.distanceKm} km</span>
+              <span><i class="fa-solid fa-mountain" style="color: var(--brand-primary); font-size: 0.75rem;"></i> ${route.elevationGainM}m D+</span>
             </div>
-            <div class="metric-box">
-              <div class="metric-val">${route.elevationGainM} <span>m</span></div>
-              <div class="metric-lbl">Dislivello D+</div>
-            </div>
-            <div class="metric-box">
-              <div class="metric-val">${route.maxGradePercent}%</div>
-              <div class="metric-lbl">Pend. Max</div>
-            </div>
-          </div>
-
-          <div style="display: flex; justify-content: space-between; font-size: 0.73rem; color: var(--text-muted); background: var(--bg-input); padding: 5px 10px; border-radius: 6px; border: 1px solid var(--border-color);">
-            <span>@20km/h: <strong>${route.timeEstimates.speed20}</strong></span>
-            <span>@25km/h: <strong>${route.timeEstimates.speed25}</strong></span>
-            <span>@30km/h: <strong>${route.timeEstimates.speed30}</strong></span>
+            <button class="btn btn-secondary btn-open-detail" style="padding: 4px 10px; font-size: 0.72rem; border-radius: 4px;">
+              <i class="fa-solid fa-expand"></i> Dettagli
+            </button>
           </div>
         `;
 
-        card.addEventListener('click', () => selectRoute(route.id));
+        card.addEventListener('click', (e) => {
+          selectRoute(route.id);
+          if (e.target.closest('.btn-open-detail')) {
+            openRouteModal(route);
+          }
+        });
         routeCardsContainer.appendChild(card);
       });
     }
