@@ -51,6 +51,8 @@ document.addEventListener('DOMContentLoaded', () => {
       Object.keys(tabPanes).forEach(key => {
         tabPanes[key].style.display = (key === targetTab) ? 'block' : 'none';
       });
+
+      mapManager.refreshMapSize();
     });
   });
 
@@ -70,39 +72,75 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Setup Autocomplete per Input Partenza & Arrivo
+  // Setup Autocomplete per Input Partenza & Arrivo (Scatta da 1 carattere e su focus)
   setupAutocomplete(inputStart, startAutocomplete);
   setupAutocomplete(inputEnd, endAutocomplete);
 
   function setupAutocomplete(inputElem, dropdownElem) {
     let timeout = null;
-    inputElem.addEventListener('input', (e) => {
-      clearTimeout(timeout);
-      const val = e.target.value.trim();
-      if (val.length < 2) {
+
+    const renderSuggestions = async (val) => {
+      if (!val || val.trim().length === 0) {
         dropdownElem.style.display = 'none';
         return;
       }
-      timeout = setTimeout(async () => {
-        const results = await explorerEngine.searchAddressSuggestions(val);
-        if (results.length > 0) {
-          dropdownElem.innerHTML = '';
-          results.forEach(res => {
-            const item = document.createElement('div');
-            item.className = 'autocomplete-item';
-            item.textContent = res.displayName;
-            item.addEventListener('click', () => {
-              inputElem.value = res.displayName;
-              dropdownElem.style.display = 'none';
-              handleCalculateRoutes();
-            });
-            dropdownElem.appendChild(item);
+
+      const results = await explorerEngine.searchAddressSuggestions(val);
+      if (results.length > 0) {
+        dropdownElem.innerHTML = '';
+        const searchLower = val.trim().toLowerCase();
+
+        results.forEach(res => {
+          const item = document.createElement('div');
+          item.className = 'autocomplete-item';
+
+          const text = res.displayName;
+          const lowerText = text.toLowerCase();
+          const matchIdx = lowerText.indexOf(searchLower);
+
+          let formattedHtml = text;
+          if (matchIdx !== -1) {
+            const before = text.substring(0, matchIdx);
+            const match = text.substring(matchIdx, matchIdx + searchLower.length);
+            const after = text.substring(matchIdx + searchLower.length);
+            formattedHtml = `${before}<span class="match-highlight">${match}</span>${after}`;
+          }
+
+          item.innerHTML = `<i class="fa-solid fa-location-dot"></i> <span>${formattedHtml}</span>`;
+
+          item.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            inputElem.value = res.displayName.split('(')[0].trim();
+            dropdownElem.style.display = 'none';
+            handleCalculateRoutes();
           });
-          dropdownElem.style.display = 'block';
-        } else {
-          dropdownElem.style.display = 'none';
-        }
-      }, 300);
+
+          dropdownElem.appendChild(item);
+        });
+
+        dropdownElem.style.display = 'block';
+      } else {
+        dropdownElem.style.display = 'none';
+      }
+    };
+
+    inputElem.addEventListener('input', (e) => {
+      clearTimeout(timeout);
+      const val = e.target.value;
+      timeout = setTimeout(() => renderSuggestions(val), 80);
+    });
+
+    inputElem.addEventListener('focus', (e) => {
+      const val = e.target.value;
+      if (val && val.length >= 1) {
+        renderSuggestions(val);
+      }
+    });
+
+    inputElem.addEventListener('blur', () => {
+      setTimeout(() => {
+        dropdownElem.style.display = 'none';
+      }, 200);
     });
 
     document.addEventListener('click', (e) => {

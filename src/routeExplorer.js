@@ -2,44 +2,58 @@
    BIKEROUTE TRACKER - ROUTE EXPLORER & TECHNICAL SPEC SHEET ENGINE
    ========================================================================== */
 
+import { getInstantCitySuggestions, ITALIAN_CITIES } from './cityData.js';
+
 export class RouteExplorerEngine {
   constructor() {
-    this.knownCities = {
-      'milano': [45.4642, 9.1900],
-      'como': [45.8103, 9.0863],
-      'lecco': [45.8565, 9.3977],
-      'monza': [45.5845, 9.2744],
-      'bergamo': [45.6983, 9.6773],
-      'varese': [45.8206, 8.8251],
-      'pavia': [45.1847, 9.1582],
-      'torino': [45.0703, 7.6869],
-      'aprilia': [41.5956, 12.6525],
-      'albano': [41.7288, 12.6582],
-      'albano laziale': [41.7288, 12.6582],
-      'velletri': [41.6869, 12.7788],
-      'anzio': [41.4475, 12.6283],
-      'nettuno': [41.4586, 12.6631],
-      'roma': [41.9028, 12.4964]
-    };
+    this.knownCities = {};
+    ITALIAN_CITIES.forEach(c => {
+      this.knownCities[c.name.toLowerCase()] = [c.lat, c.lon];
+    });
   }
 
   /**
-   * Cerca suggerimenti indirizzo/città via Nominatim OSM
+   * Cerca suggerimenti indirizzo/città istantanei (da 1 carattere in su)
    */
   async searchAddressSuggestions(query) {
-    if (!query || query.trim().length < 2) return [];
+    if (!query || query.trim().length === 0) return [];
+    const clean = query.trim().toLowerCase();
+
+    // 1. Risultati istantanei locali (istantanei fin dalla 1ª lettera)
+    const localSuggestions = getInstantCitySuggestions(clean);
+
+    // Se la stringa è di 1 solo carattere, restituiamo subito i risultati locali per massima velocità
+    if (clean.length === 1) {
+      return localSuggestions;
+    }
+
+    // 2. Query Nominatim per indirizzi o frazioni specifiche (con timeout)
     try {
       const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&countrycodes=it`;
       const res = await fetch(url, { headers: { 'Accept-Language': 'it,en' } });
       const data = await res.json();
-      return (data || []).map(item => ({
+      
+      const osmSuggestions = (data || []).map(item => ({
         displayName: item.display_name.split(',').slice(0, 3).join(','),
+        cityName: item.display_name.split(',')[0],
         lat: parseFloat(item.lat),
         lon: parseFloat(item.lon)
       }));
+
+      // Unisci senza duplicati esatti
+      const resultMap = new Map();
+      localSuggestions.forEach(item => resultMap.set(item.cityName.toLowerCase(), item));
+      osmSuggestions.forEach(item => {
+        const key = item.cityName.toLowerCase();
+        if (!resultMap.has(key)) {
+          resultMap.set(key, item);
+        }
+      });
+
+      return Array.from(resultMap.values()).slice(0, 8);
     } catch (err) {
-      console.warn("Autocomplete error:", err);
-      return [];
+      console.warn("Autocomplete Nominatim fallback error:", err);
+      return localSuggestions;
     }
   }
 

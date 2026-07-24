@@ -17,24 +17,43 @@ export class MapManager {
     this.map = L.map(containerId, {
       zoomControl: true,
       attributionControl: false
-    }).setView([45.4642, 9.1900], 11);
+    }).setView([41.5956, 12.6525], 11);
 
     const darkTileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
       maxZoom: 19,
-      subdomains: 'abcd'
+      subdomains: 'abcd',
+      attribution: '&copy; OpenStreetMap &copy; CARTO'
     });
 
     const cycleTileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap'
     });
 
     darkTileLayer.addTo(this.map);
 
     const baseMaps = {
-      "Mappa Scura": darkTileLayer,
-      "Mappa Stradale / Ciclabile": cycleTileLayer
+      "Mappa Scura Pro": darkTileLayer,
+      "Mappa Stradale / OSM": cycleTileLayer
     };
     L.control.layers(baseMaps, null, { position: 'topright' }).addTo(this.map);
+
+    // Risoluzione problemi di rendering Leaflet se il container viene calcolato in ritardo
+    setTimeout(() => {
+      if (this.map) this.map.invalidateSize();
+    }, 200);
+
+    window.addEventListener('resize', () => {
+      if (this.map) this.map.invalidateSize();
+    });
+  }
+
+  refreshMapSize() {
+    if (this.map) {
+      setTimeout(() => {
+        this.map.invalidateSize();
+      }, 100);
+    }
   }
 
   clearRoutes() {
