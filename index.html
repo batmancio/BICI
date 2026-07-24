@@ -70,7 +70,7 @@
           <!-- Input Punti A e B con Autocomplete -->
           <div class="route-inputs" style="margin-top: 12px;">
             <div class="input-group">
-              <label><i class="fa-solid fa-location-dot" style="color: var(--brand-lime);"></i> Punto di Partenza (A)</label>
+              <label><i class="fa-solid fa-location-dot" style="color: var(--brand-primary);"></i> Punto di Partenza (A)</label>
               <input type="text" id="inputStart" class="input-field" placeholder="Scrivi una città (es. Aprilia, Anzio, Roma)..." value="Aprilia" autocomplete="off">
               <div id="startAutocomplete" class="autocomplete-dropdown"></div>
             </div>
@@ -93,7 +93,7 @@
             
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
               <span style="font-size: 0.78rem; color: var(--text-muted);">Target:</span>
-              <span style="font-weight: 700; color: var(--brand-cyan); font-size: 0.95rem;"><span id="targetKmValue">45</span> km</span>
+              <span style="font-weight: 700; color: var(--brand-primary); font-size: 0.95rem;"><span id="targetKmValue">45</span> km</span>
             </div>
 
             <input type="range" id="sliderTargetKm" min="15" max="120" step="5" value="45" style="width: 100%; accent-color: var(--brand-primary); cursor: pointer;">
@@ -259,7 +259,7 @@
   <!-- FIT Parser (Client-side) -->
   <script src="https://cdn.jsdelivr.net/npm/fit-file-parser@1.9.0/dist/fit-parser.min.js"></script>
 
-  <!-- App JavaScript Modules -->
-  <script type="module" src="./src/main.js"></script>
+  <!-- App JavaScript Bundle (Funziona sia con web server che aprendo direttamente il file HTML) -->
+  <script src="./src/app.bundle.js"></script>
 </body>
 </html>

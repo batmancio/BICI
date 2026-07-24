@@ -15,76 +15,139 @@ export class RouteExplorerEngine {
   /**
    * Cerca suggerimenti indirizzo/città istantanei (da 1 carattere in su)
    */
+  /**
+   * Cerca suggerimenti per indirizzi, vie, piazze o città (Komoot Photon + Nominatim + Local)
+   */
   async searchAddressSuggestions(query) {
-    if (!query || query.trim().length === 0) return [];
-    const clean = query.trim().toLowerCase();
+    if (!query || query.trim().length < 2) return [];
+    const clean = query.trim();
 
-    // 1. Risultati istantanei locali (istantanei fin dalla 1ª lettera)
-    const localSuggestions = getInstantCitySuggestions(clean);
+    // 1. Suggerimenti istantanei locali
+    const localMatches = getInstantCitySuggestions(clean);
 
-    // Se la stringa è di 1 solo carattere, restituiamo subito i risultati locali per massima velocità
-    if (clean.length === 1) {
-      return localSuggestions;
-    }
-
-    // 2. Query Nominatim per indirizzi o frazioni specifiche (con timeout)
+    // 2. Geocoder Komoot Photon (ottimizzato per strade, numeri civici e punti di interesse ciclismo)
     try {
-      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&countrycodes=it`;
-      const res = await fetch(url, { headers: { 'Accept-Language': 'it,en' } });
-      const data = await res.json();
-      
-      const osmSuggestions = (data || []).map(item => ({
-        displayName: item.display_name.split(',').slice(0, 3).join(','),
-        cityName: item.display_name.split(',')[0],
-        lat: parseFloat(item.lat),
-        lon: parseFloat(item.lon)
-      }));
+      const photonUrl = `https://photon.komoot.io/api/?q=${encodeURIComponent(clean)}&limit=6&lang=it`;
+      const controller = new AbortController();
+      const tid = setTimeout(() => controller.abort(), 2000);
+      const res = await fetch(photonUrl, { signal: controller.signal });
+      clearTimeout(tid);
 
-      // Unisci senza duplicati esatti
-      const resultMap = new Map();
-      localSuggestions.forEach(item => resultMap.set(item.cityName.toLowerCase(), item));
-      osmSuggestions.forEach(item => {
-        const key = item.cityName.toLowerCase();
-        if (!resultMap.has(key)) {
-          resultMap.set(key, item);
-        }
-      });
+      if (res.ok) {
+        const data = await res.json();
+        const photonSuggestions = (data.features || []).map(feat => {
+          const props = feat.properties;
+          const street = props.name || props.street || '';
+          const city = props.city || props.town || props.village || props.county || '';
+          const state = props.state || 'Italia';
+          const labelParts = [];
+          if (street) labelParts.push(street);
+          if (city && city !== street) labelParts.push(city);
+          if (state) labelParts.push(state);
 
-      return Array.from(resultMap.values()).slice(0, 8);
+          const fullLabel = labelParts.join(', ');
+          return {
+            displayName: fullLabel,
+            cityName: street || city || fullLabel,
+            lat: feat.geometry.coordinates[1],
+            lon: feat.geometry.coordinates[0],
+            isStreet: !!props.street || props.type === 'street' || props.osm_value === 'highway'
+          };
+        });
+
+        // Unisci local + photon senza duplicati
+        const resultMap = new Map();
+        photonSuggestions.forEach(item => resultMap.set(item.displayName.toLowerCase(), item));
+        localMatches.forEach(item => {
+          const k = item.displayName.toLowerCase();
+          if (!resultMap.has(k)) resultMap.set(k, item);
+        });
+
+        return Array.from(resultMap.values()).slice(0, 8);
+      }
     } catch (err) {
-      console.warn("Autocomplete Nominatim fallback error:", err);
-      return localSuggestions;
+      console.warn("Photon autocomplete fallback:", err);
     }
+
+    // 3. Fallback Nominatim
+    try {
+      const nomUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(clean)}&addressdetails=1&limit=5&countrycodes=it`;
+      const controller = new AbortController();
+      const tid = setTimeout(() => controller.abort(), 2000);
+      const res = await fetch(nomUrl, { headers: { 'Accept-Language': 'it,en' }, signal: controller.signal });
+      clearTimeout(tid);
+
+      if (res.ok) {
+        const data = await res.json();
+        return (data || []).map(item => ({
+          displayName: item.display_name.split(',').slice(0, 3).join(','),
+          cityName: item.display_name.split(',')[0],
+          lat: parseFloat(item.lat),
+          lon: parseFloat(item.lon),
+          isStreet: item.type === 'highway' || item.class === 'highway'
+        }));
+      }
+    } catch (err) {
+      console.warn("Nominatim autocomplete fallback:", err);
+    }
+
+    return localMatches;
   }
 
   /**
-   * Geocode city/address string to [lat, lng]
+   * Geocode via, piazza, o città string to [lat, lng] (Precisione a livello di via)
    */
   async geocodeLocation(query) {
     if (!query) return null;
-    const cleanQuery = query.trim().toLowerCase();
+    const cleanQuery = query.trim();
 
+    // 1. Controllo coordinate dirette (es: "41.5956, 12.6525")
     const coordMatch = cleanQuery.match(/^(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)$/);
     if (coordMatch) {
       return [parseFloat(coordMatch[1]), parseFloat(coordMatch[2])];
     }
 
-    for (const [key, coords] of Object.entries(this.knownCities)) {
-      if (cleanQuery === key || cleanQuery.startsWith(key)) {
-        return coords;
-      }
-    }
-
+    // 2. Query Komoot Photon (Ricerca vie, numeri civici, piazze con priorità)
     try {
-      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`;
-      const res = await fetch(url, { headers: { 'Accept-Language': 'it,en' } });
-      const data = await res.json();
+      const photonUrl = `https://photon.komoot.io/api/?q=${encodeURIComponent(cleanQuery)}&limit=1&lang=it`;
+      const controller = new AbortController();
+      const tid = setTimeout(() => controller.abort(), 2000);
+      const res = await fetch(photonUrl, { signal: controller.signal });
+      clearTimeout(tid);
 
-      if (data && data.length > 0) {
-        return [parseFloat(data[0].lat), parseFloat(data[0].lon)];
+      if (res.ok) {
+        const data = await res.json();
+        if (data.features && data.features.length > 0) {
+          const coords = data.features[0].geometry.coordinates;
+          return [coords[1], coords[0]]; // [lat, lng]
+        }
       }
     } catch (err) {
-      console.warn("Geocoding fallback:", err);
+      console.warn("Photon geocode fallback:", err);
+    }
+
+    // 3. Query OpenStreetMap Nominatim per vie specifiche
+    try {
+      const nomUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(cleanQuery)}&limit=1`;
+      const controller = new AbortController();
+      const tid = setTimeout(() => controller.abort(), 2000);
+      const res = await fetch(nomUrl, { headers: { 'Accept-Language': 'it,en' }, signal: controller.signal });
+      clearTimeout(tid);
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.length > 0) {
+          return [parseFloat(data[0].lat), parseFloat(data[0].lon)];
+        }
+      }
+    } catch (err) {
+      console.warn("Nominatim geocode fallback:", err);
+    }
+
+    // 4. Controllo SOLO UGUAGLIANZA ESATTA nella lista città locali (Nessun match parziale per non ignorare le vie!)
+    const cleanLower = cleanQuery.toLowerCase();
+    if (this.knownCities[cleanLower]) {
+      return this.knownCities[cleanLower];
     }
 
     return null;

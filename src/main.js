@@ -80,7 +80,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let timeout = null;
 
     const renderSuggestions = async (val) => {
-      if (!val || val.trim().length === 0) {
+      if (!val || val.trim().length < 2) {
         dropdownElem.style.display = 'none';
         return;
       }
@@ -106,11 +106,14 @@ document.addEventListener('DOMContentLoaded', () => {
             formattedHtml = `${before}<span class="match-highlight">${match}</span>${after}`;
           }
 
-          item.innerHTML = `<i class="fa-solid fa-location-dot"></i> <span>${formattedHtml}</span>`;
+          const iconClass = res.isStreet ? 'fa-road' : 'fa-location-dot';
+          item.innerHTML = `<i class="fa-solid ${iconClass}"></i> <span>${formattedHtml}</span>`;
 
           item.addEventListener('mousedown', (e) => {
             e.preventDefault();
-            inputElem.value = res.displayName.split('(')[0].trim();
+            inputElem.value = res.displayName;
+            inputElem.dataset.lat = res.lat;
+            inputElem.dataset.lng = res.lon;
             dropdownElem.style.display = 'none';
             handleCalculateRoutes();
           });
@@ -125,14 +128,16 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     inputElem.addEventListener('input', (e) => {
+      delete inputElem.dataset.lat;
+      delete inputElem.dataset.lng;
       clearTimeout(timeout);
       const val = e.target.value;
-      timeout = setTimeout(() => renderSuggestions(val), 80);
+      timeout = setTimeout(() => renderSuggestions(val), 100);
     });
 
     inputElem.addEventListener('focus', (e) => {
       const val = e.target.value;
-      if (val && val.length >= 1) {
+      if (val && val.length >= 2) {
         renderSuggestions(val);
       }
     });
@@ -156,15 +161,25 @@ document.addEventListener('DOMContentLoaded', () => {
       const endVal = inputEnd.value.trim() || 'Albano Laziale';
       const targetKm = parseInt(sliderTargetKm?.value || '45', 10);
 
+      let startCoords = null;
+      let endCoords = null;
+
+      if (inputStart?.dataset.lat && inputStart?.dataset.lng) {
+        startCoords = [parseFloat(inputStart.dataset.lat), parseFloat(inputStart.dataset.lng)];
+      }
+      if (inputEnd?.dataset.lat && inputEnd?.dataset.lng) {
+        endCoords = [parseFloat(inputEnd.dataset.lat), parseFloat(inputEnd.dataset.lng)];
+      }
+
       routeCardsContainer.innerHTML = `
         <div style="text-align: center; padding: 36px 16px; color: var(--text-muted);">
-          <i class="fa-solid fa-spinner fa-spin" style="font-size: 1.8rem; color: var(--brand-orange); margin-bottom: 12px;"></i>
-          <div style="font-weight: 600; color: white; margin-bottom: 4px;">Calcolo 5 opzioni stradali...</div>
+          <i class="fa-solid fa-spinner fa-spin" style="font-size: 1.8rem; color: var(--brand-primary); margin-bottom: 12px;"></i>
+          <div style="font-weight: 600; color: var(--text-main); margin-bottom: 4px;">Calcolo 5 opzioni stradali...</div>
           <div style="font-size: 0.78rem;">Elaborazione arterie OSRM & profilatura altimetrica</div>
         </div>
       `;
 
-      activeRoutes = await explorerEngine.discoverRoutes(startVal, endVal, targetKm);
+      activeRoutes = await explorerEngine.discoverRoutes(startVal, endVal, targetKm, startCoords, endCoords);
       renderTechnicalSpecCards(activeRoutes);
 
       mapManager.clearRoutes();
@@ -230,8 +245,8 @@ document.addEventListener('DOMContentLoaded', () => {
           <span class="badge badge-low-traffic">${route.difficulty}</span>
         </div>
 
-        <div style="font-size: 0.78rem; color: var(--text-muted); background: rgba(0,0,0,0.2); padding: 7px 10px; border-radius: 6px; margin-bottom: 10px; border-left: 3px solid ${route.color};">
-          <i class="fa-solid fa-road" style="margin-right: 4px; color: var(--brand-orange);"></i> 
+        <div style="font-size: 0.78rem; color: var(--text-muted); background: var(--bg-input); padding: 7px 10px; border-radius: 6px; margin-bottom: 10px; border: 1px solid var(--border-color); border-left: 3px solid ${route.color};">
+          <i class="fa-solid fa-road" style="margin-right: 4px; color: var(--brand-primary);"></i> 
           <strong>Itinerario:</strong> ${route.streetSummary}
         </div>
 
@@ -250,7 +265,7 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
         </div>
 
-        <div style="display: flex; justify-content: space-between; font-size: 0.73rem; color: var(--text-muted); background: rgba(0,0,0,0.2); padding: 5px 10px; border-radius: 6px;">
+        <div style="display: flex; justify-content: space-between; font-size: 0.73rem; color: var(--text-muted); background: var(--bg-input); padding: 5px 10px; border-radius: 6px; border: 1px solid var(--border-color);">
           <span>@20km/h: <strong>${route.timeEstimates.speed20}</strong></span>
           <span>@25km/h: <strong>${route.timeEstimates.speed25}</strong></span>
           <span>@30km/h: <strong>${route.timeEstimates.speed30}</strong></span>

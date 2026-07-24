@@ -7,7 +7,7 @@ export class AnalyticsManager {
     this.chartInstance = null;
   }
 
-  renderElevationChart(containerCanvas, profileData, routeColor = '#fc5200', onPointHover = null) {
+  renderElevationChart(containerCanvas, profileData, routeColor = '#0ea5e9', onPointHover = null) {
     if (!containerCanvas) return;
 
     if (this.chartInstance) {
@@ -18,9 +18,11 @@ export class AnalyticsManager {
     const labels = profileData.map(p => `${p.distanceKm} km`);
     const elevations = profileData.map(p => p.elevationM);
 
+    const activeColor = routeColor || '#00a884';
+
     const gradient = ctx.createLinearGradient(0, 0, 0, 160);
-    gradient.addColorStop(0, 'rgba(252, 82, 0, 0.35)');
-    gradient.addColorStop(1, 'rgba(17, 23, 38, 0.0)');
+    gradient.addColorStop(0, 'rgba(0, 168, 132, 0.25)');
+    gradient.addColorStop(1, 'rgba(17, 27, 33, 0.0)');
 
     this.chartInstance = new Chart(ctx, {
       type: 'line',
@@ -29,14 +31,14 @@ export class AnalyticsManager {
         datasets: [{
           label: 'Altimetria (metri)',
           data: elevations,
-          borderColor: '#fc5200',
-          borderWidth: 2.5,
+          borderColor: activeColor,
+          borderWidth: 2,
           backgroundColor: gradient,
           fill: true,
           tension: 0.3,
           pointRadius: 0,
           pointHoverRadius: 5,
-          pointHoverBackgroundColor: '#fc5200',
+          pointHoverBackgroundColor: activeColor,
           pointHoverBorderColor: '#ffffff',
           pointHoverBorderWidth: 2
         }]
@@ -51,10 +53,10 @@ export class AnalyticsManager {
         plugins: {
           legend: { display: false },
           tooltip: {
-            backgroundColor: '#111726',
-            titleColor: '#f8fafc',
-            bodyColor: '#fc5200',
-            borderColor: 'rgba(255, 255, 255, 0.1)',
+            backgroundColor: '#111b21',
+            titleColor: '#e9edef',
+            bodyColor: '#00a884',
+            borderColor: '#222d34',
             borderWidth: 1,
             padding: 10,
             displayColors: false,
@@ -66,12 +68,12 @@ export class AnalyticsManager {
         },
         scales: {
           x: {
-            grid: { color: 'rgba(255, 255, 255, 0.03)' },
-            ticks: { color: '#64748b', font: { size: 10 } }
+            grid: { color: 'rgba(255, 255, 255, 0.04)' },
+            ticks: { color: '#8696a0', font: { size: 10 } }
           },
           y: {
-            grid: { color: 'rgba(255, 255, 255, 0.03)' },
-            ticks: { color: '#64748b', font: { size: 10 } }
+            grid: { color: 'rgba(255, 255, 255, 0.04)' },
+            ticks: { color: '#8696a0', font: { size: 10 } }
           }
         },
         onHover: (event, activeElements) => {
