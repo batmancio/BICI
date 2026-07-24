@@ -401,6 +401,63 @@ function initApp() {
     });
   }
 
+  // Handle Bryton 420 Modal & Guide Tabs
+  const btnBrytonGuide = document.getElementById('btnBrytonGuide');
+  const brytonModal = document.getElementById('brytonModal');
+  const btnCloseBrytonModal = document.getElementById('btnCloseBrytonModal');
+  const btnCloseBrytonAction = document.getElementById('btnCloseBrytonAction');
+  const btnBrytonDownloadGpx = document.getElementById('btnBrytonDownloadGpx');
+  const brytonRouteName = document.getElementById('brytonRouteName');
+
+  function openBrytonModal() {
+    if (!brytonModal) return;
+    if (plannerManager.selectedRoute) {
+      if (brytonRouteName) brytonRouteName.textContent = plannerManager.selectedRoute.name;
+    } else {
+      if (brytonRouteName) brytonRouteName.textContent = "Seleziona una rotta sulla mappa prima di scaricare";
+    }
+    brytonModal.classList.add('active');
+  }
+
+  function closeBrytonModal() {
+    if (brytonModal) brytonModal.classList.remove('active');
+  }
+
+  if (btnBrytonGuide) btnBrytonGuide.addEventListener('click', openBrytonModal);
+  if (btnCloseBrytonModal) btnCloseBrytonModal.addEventListener('click', closeBrytonModal);
+  if (btnCloseBrytonAction) btnCloseBrytonAction.addEventListener('click', closeBrytonModal);
+  if (btnBrytonDownloadGpx) btnBrytonDownloadGpx.addEventListener('click', () => plannerManager.exportToGpx());
+  if (brytonModal) {
+    brytonModal.addEventListener('click', (e) => {
+      if (e.target === brytonModal) closeBrytonModal();
+    });
+  }
+
+  const brytonTabBtns = document.querySelectorAll('.bryton-tab-btn');
+  const brytonTabContents = {
+    app: document.getElementById('bTabApp'),
+    usb: document.getElementById('bTabUsb'),
+    start: document.getElementById('bTabStart')
+  };
+
+  brytonTabBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const target = btn.dataset.btab;
+      brytonTabBtns.forEach(b => {
+        b.classList.remove('active');
+        b.style.background = 'transparent';
+        b.style.color = 'var(--text-muted)';
+      });
+      btn.classList.add('active');
+      btn.style.background = 'var(--brand-primary)';
+      btn.style.color = '#111';
+
+      Object.keys(brytonTabContents).forEach(key => {
+        if (brytonTabContents[key]) brytonTabContents[key].style.display = (key === target) ? 'block' : 'none';
+      });
+    });
+  });
+
   function renderTechnicalSpecCards(routes) {
     routeCardsContainer.innerHTML = '';
 
@@ -569,6 +626,15 @@ function initApp() {
   btnToggleChart.addEventListener('click', () => {
     elevationPanel.classList.toggle('collapsed');
   });
+
+  const btnToggleSidebar = document.getElementById('btnToggleSidebar');
+  const appSidebar = document.getElementById('appSidebar');
+  if (btnToggleSidebar && appSidebar) {
+    btnToggleSidebar.addEventListener('click', () => {
+      appSidebar.classList.toggle('collapsed');
+      setTimeout(() => mapManager.refreshMapSize(), 230);
+    });
+  }
 
   // Calcolo iniziale automatico dei percorsi all'avvio dell'applicazione
   setTimeout(() => {

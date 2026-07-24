@@ -942,23 +942,58 @@
       const route = this.selectedRoute;
       const nowISO = new Date().toISOString();
 
+      let peakIdx = 0;
+      let maxEle = -9999;
+      const profile = route.elevationProfile || [];
+      profile.forEach((p, idx) => {
+        if (p.elevationM > maxEle) {
+          maxEle = p.elevationM;
+          peakIdx = idx;
+        }
+      });
+
+      const coords = route.coords || [];
+      const startCoord = coords[0] || [41.5956, 12.6525];
+      const endCoord = coords[coords.length - 1] || [41.7288, 12.6582];
+      const peakCoord = coords[Math.min(peakIdx, coords.length - 1)] || startCoord;
+
       let gpxXml = `<?xml version="1.0" encoding="UTF-8"?>
-<gpx version="1.1" creator="BICI Analytics - Bryton Rider 420"
-  xmlns="http://www.topografix.com/GPX/1/1">
+<gpx version="1.1" creator="Strade Bianche Analytics - Bryton Rider 420"
+  xmlns="http://www.topografix.com/GPX/1/1"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">
   <metadata>
     <name>${this.escapeXml(route.name)}</name>
-    <desc>Percorso generato da BICI Analytics. Distanza: ${route.distanceKm}km, D+: ${route.elevationGainM}m</desc>
+    <desc>Percorso ottimizzato per Bryton Rider 420. Distanza: ${route.distanceKm}km, D+: ${route.elevationGainM}m, Pendenza Max: ${route.maxGradePercent || 0}%</desc>
     <time>${nowISO}</time>
   </metadata>
+
+  <wpt lat="${startCoord[0].toFixed(6)}" lon="${startCoord[1].toFixed(6)}">
+    <name>Partenza: ${this.escapeXml(route.name.split('→')[0] || 'Start')}</name>
+    <sym>Generic</sym>
+    <type>Start</type>
+  </wpt>
+  <wpt lat="${peakCoord[0].toFixed(6)}" lon="${peakCoord[1].toFixed(6)}">
+    <ele>${maxEle}</ele>
+    <name>Cima / Max Altitudine (${maxEle}m)</name>
+    <sym>Summit</sym>
+    <type>Summit</type>
+  </wpt>
+  <wpt lat="${endCoord[0].toFixed(6)}" lon="${endCoord[1].toFixed(6)}">
+    <name>Arrivo: ${this.escapeXml(route.name.split('→')[1] || 'Finish')}</name>
+    <sym>Generic</sym>
+    <type>Finish</type>
+  </wpt>
+
   <trk>
     <name>${this.escapeXml(route.name)}</name>
     <type>Cycling</type>
     <trkseg>\n`;
 
-      route.coords.forEach((coord, idx) => {
+      coords.forEach((coord, idx) => {
         const lat = coord[0].toFixed(6);
         const lng = coord[1].toFixed(6);
-        const ele = route.elevationProfile[Math.min(idx, route.elevationProfile.length - 1)]?.elevationM || 100;
+        const ele = profile[Math.min(idx, profile.length - 1)]?.elevationM || 100;
         gpxXml += `      <trkpt lat="${lat}" lon="${lng}"><ele>${ele}</ele></trkpt>\n`;
       });
 
@@ -1483,6 +1518,63 @@
       });
     }
 
+    // Handle Bryton 420 Modal & Guide Tabs
+    const btnBrytonGuide = document.getElementById('btnBrytonGuide');
+    const brytonModal = document.getElementById('brytonModal');
+    const btnCloseBrytonModal = document.getElementById('btnCloseBrytonModal');
+    const btnCloseBrytonAction = document.getElementById('btnCloseBrytonAction');
+    const btnBrytonDownloadGpx = document.getElementById('btnBrytonDownloadGpx');
+    const brytonRouteName = document.getElementById('brytonRouteName');
+
+    function openBrytonModal() {
+      if (!brytonModal) return;
+      if (plannerManager.selectedRoute) {
+        if (brytonRouteName) brytonRouteName.textContent = plannerManager.selectedRoute.name;
+      } else {
+        if (brytonRouteName) brytonRouteName.textContent = "Seleziona una rotta sulla mappa prima di scaricare";
+      }
+      brytonModal.classList.add('active');
+    }
+
+    function closeBrytonModal() {
+      if (brytonModal) brytonModal.classList.remove('active');
+    }
+
+    if (btnBrytonGuide) btnBrytonGuide.addEventListener('click', openBrytonModal);
+    if (btnCloseBrytonModal) btnCloseBrytonModal.addEventListener('click', closeBrytonModal);
+    if (btnCloseBrytonAction) btnCloseBrytonAction.addEventListener('click', closeBrytonModal);
+    if (btnBrytonDownloadGpx) btnBrytonDownloadGpx.addEventListener('click', () => plannerManager.exportToGpx());
+    if (brytonModal) {
+      brytonModal.addEventListener('click', (e) => {
+        if (e.target === brytonModal) closeBrytonModal();
+      });
+    }
+
+    const brytonTabBtns = document.querySelectorAll('.bryton-tab-btn');
+    const brytonTabContents = {
+      app: document.getElementById('bTabApp'),
+      usb: document.getElementById('bTabUsb'),
+      start: document.getElementById('bTabStart')
+    };
+
+    brytonTabBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const target = btn.dataset.btab;
+        brytonTabBtns.forEach(b => {
+          b.classList.remove('active');
+          b.style.background = 'transparent';
+          b.style.color = 'var(--text-muted)';
+        });
+        btn.classList.add('active');
+        btn.style.background = 'var(--brand-primary)';
+        btn.style.color = '#111';
+
+        Object.keys(brytonTabContents).forEach(key => {
+          if (brytonTabContents[key]) brytonTabContents[key].style.display = (key === target) ? 'block' : 'none';
+        });
+      });
+    });
+
     function renderTechnicalSpecCards(routes) {
       if (!routeCardsContainer) return;
       routeCardsContainer.innerHTML = '';
@@ -1501,27 +1593,27 @@
         const isFav = favoritesManager.isFavorite(route.id);
 
         card.innerHTML = `
-          <div class="spec-card-header" style="margin-bottom: 6px;">
-            <div class="route-name" style="font-size: 0.88rem;">
-              <div class="route-color-pill" style="background: ${route.color}; width: 10px; height: 10px;"></div>
+          <div class="spec-card-header" style="margin-bottom: 4px;">
+            <div class="route-name" style="font-size: 0.84rem;">
+              <div class="route-color-pill" style="background: ${route.color};"></div>
               ${route.name}
             </div>
             <div style="display: flex; align-items: center; gap: 6px;">
               <button class="fav-star-btn ${isFav ? 'active' : ''}" title="Aggiungi ai preferiti">
                 <i class="fa-${isFav ? 'solid' : 'regular'} fa-star"></i>
               </button>
-              <span class="badge ${safety.badgeClass}" style="font-size: 0.68rem; padding: 2px 7px;">
+              <span class="badge ${safety.badgeClass}">
                 <i class="fa-solid ${safety.iconClass}"></i> ${safety.badgeText}
               </span>
             </div>
           </div>
 
-          <div style="display: flex; justify-content: space-between; align-items: center; background: var(--bg-input); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color); border-left: 3px solid ${route.color};">
-            <div style="display: flex; gap: 14px; font-size: 0.85rem; font-weight: 700;">
-              <span><i class="fa-solid fa-ruler-horizontal" style="color: var(--brand-primary); font-size: 0.75rem;"></i> ${route.distanceKm} km</span>
-              <span><i class="fa-solid fa-mountain" style="color: var(--brand-primary); font-size: 0.75rem;"></i> ${route.elevationGainM}m D+</span>
+          <div style="display: flex; justify-content: space-between; align-items: center; background: var(--bg-input); padding: 6px 10px; border-radius: var(--radius-xs); border: 1px solid var(--border-color); border-left: 3px solid ${route.color};">
+            <div style="display: flex; gap: 12px; font-size: 0.82rem; font-weight: 700; font-family: var(--font-mono);">
+              <span><i class="fa-solid fa-ruler-horizontal" style="color: var(--brand-primary); font-size: 0.72rem;"></i> ${route.distanceKm} km</span>
+              <span><i class="fa-solid fa-mountain" style="color: var(--brand-primary); font-size: 0.72rem;"></i> ${route.elevationGainM}m D+</span>
             </div>
-            <button class="btn btn-secondary btn-open-detail" style="padding: 4px 10px; font-size: 0.72rem; border-radius: 4px;">
+            <button class="btn btn-secondary btn-open-detail" style="padding: 3px 8px; font-size: 0.7rem;">
               <i class="fa-solid fa-expand"></i> Dettagli
             </button>
           </div>
@@ -1716,6 +1808,15 @@
 
     if (btnToggleChart && elevationPanel) {
       btnToggleChart.addEventListener('click', () => elevationPanel.classList.toggle('collapsed'));
+    }
+
+    const btnToggleSidebar = document.getElementById('btnToggleSidebar');
+    const appSidebar = document.getElementById('appSidebar');
+    if (btnToggleSidebar && appSidebar) {
+      btnToggleSidebar.addEventListener('click', () => {
+        appSidebar.classList.toggle('collapsed');
+        setTimeout(() => mapManager.refreshMapSize(), 230);
+      });
     }
 
     setTimeout(() => {

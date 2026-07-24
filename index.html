@@ -7,6 +7,9 @@
   
   <!-- FontAwesome Icons & Google Fonts -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -21,7 +24,7 @@
        ========================================================================== -->
   <header class="app-header">
     <div class="brand-logo">
-      <svg class="cyclist-icon" viewBox="0 0 32 32" width="30" height="30" style="vertical-align: middle;">
+      <svg class="cyclist-icon" viewBox="0 0 32 32" width="26" height="26">
         <!-- Helmet -->
         <path d="M6 14C6 9 9.5 5 16 5C22.5 5 26 9 26 14C26 15 25 15.5 23.5 15.5H8.5C7 15.5 6 15 6 14Z" fill="var(--brand-primary)"/>
         <!-- Sunglasses / Visor -->
@@ -31,7 +34,7 @@
         <!-- Cycling Collar -->
         <path d="M5 29C7 26.5 11 25 16 25C21 25 25 26.5 27 29" stroke="var(--text-main)" stroke-width="2" fill="none" stroke-linecap="round"/>
       </svg>
-      <div class="brand-title" style="letter-spacing: -0.5px;">Strade <span>Bianche</span></div>
+      <div class="brand-title">Strade <span>Bianche</span></div>
     </div>
 
     <nav class="nav-tabs">
@@ -42,11 +45,14 @@
         <i class="fa-solid fa-star"></i> Preferiti & Cartelle
       </button>
       <button class="nav-btn" data-tab="analysis">
-        <i class="fa-solid fa-chart-line"></i> Analisi Telemetria
+        <i class="fa-solid fa-chart-line"></i> Telemetria & Allenamento
       </button>
     </nav>
 
     <div class="header-actions">
+      <button id="btnBrytonGuide" class="btn btn-secondary" title="Guida caricamento Bryton Rider 420 & Ciclocomputer">
+        <i class="fa-solid fa-bicycle" style="color: var(--brand-primary);"></i> Guida Bryton 420
+      </button>
       <button id="btnExportGpx" class="btn btn-primary" title="Scarica file GPX per il tuo ciclocomputer">
         <i class="fa-solid fa-download"></i> Export .GPX
       </button>
@@ -62,7 +68,7 @@
   <main class="app-main">
 
     <!-- SIDEBAR -->
-    <aside class="sidebar">
+    <aside id="appSidebar" class="sidebar">
       <div class="sidebar-content">
 
         <!-- TAB 1: ESPLORATORE ROTTE & SCHEDE TECNICHE -->
@@ -73,27 +79,27 @@
           </div>
 
           <!-- Selettore Modalità di Percorso -->
-          <div class="route-mode-selector" style="margin-top: 10px; display: flex; gap: 4px; background: var(--bg-card); padding: 4px; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
-            <button class="mode-btn active" data-mode="oneway" style="flex: 1; padding: 7px 4px; font-size: 0.74rem; font-weight: 600; border-radius: var(--radius-sm); border: none; background: var(--bg-pill-active); color: #fff; cursor: pointer;">
+          <div class="route-mode-selector" style="display: flex; gap: 4px; background: var(--bg-card); padding: 4px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); margin-bottom: 10px;">
+            <button class="mode-btn active" data-mode="oneway" style="flex: 1; padding: 6px 4px; font-size: 0.74rem; font-weight: 600; border-radius: var(--radius-xs); border: none; background: var(--bg-pill-active); color: #fff; cursor: pointer;">
               <i class="fa-solid fa-arrow-right"></i> Solo Andata
             </button>
-            <button class="mode-btn" data-mode="roundtrip" style="flex: 1; padding: 7px 4px; font-size: 0.74rem; font-weight: 600; border-radius: var(--radius-sm); border: none; background: transparent; color: var(--text-muted); cursor: pointer;">
-              <i class="fa-solid fa-arrows-left-right"></i> Andata/Ritorno
+            <button class="mode-btn" data-mode="roundtrip" style="flex: 1; padding: 6px 4px; font-size: 0.74rem; font-weight: 600; border-radius: var(--radius-xs); border: none; background: transparent; color: var(--text-muted); cursor: pointer;">
+              <i class="fa-solid fa-arrows-left-right"></i> A/R
             </button>
-            <button class="mode-btn" data-mode="loop" style="flex: 1; padding: 7px 4px; font-size: 0.74rem; font-weight: 600; border-radius: var(--radius-sm); border: none; background: transparent; color: var(--text-muted); cursor: pointer;">
+            <button class="mode-btn" data-mode="loop" style="flex: 1; padding: 6px 4px; font-size: 0.74rem; font-weight: 600; border-radius: var(--radius-xs); border: none; background: transparent; color: var(--text-muted); cursor: pointer;">
               <i class="fa-solid fa-rotate-right"></i> Anello (A→A)
             </button>
           </div>
 
           <!-- Input Punti A e B con Autocomplete -->
-          <div class="route-inputs" style="margin-top: 8px;">
+          <div class="route-inputs-card">
             <div class="input-group">
-              <label><i class="fa-solid fa-location-dot" style="color: var(--brand-primary);"></i> Punto di Partenza (A)</label>
-              <input type="text" id="inputStart" class="input-field" placeholder="Scrivi la città o l'indirizzo di partenza..." value="Siena" autocomplete="off">
+              <label><i class="fa-solid fa-location-dot" style="color: var(--brand-primary);"></i> Partenza (A)</label>
+              <input type="text" id="inputStart" class="input-field" placeholder="Scrivi la città o l'indirizzo..." value="Siena" autocomplete="off">
               <div id="startAutocomplete" class="autocomplete-dropdown"></div>
             </div>
             <div class="input-group">
-              <label><i class="fa-solid fa-flag-checkered" style="color: #ef4444;"></i> Punto di Arrivo (B)</label>
+              <label><i class="fa-solid fa-flag-checkered" style="color: #ef4444;"></i> Destinazione (B)</label>
               <input type="text" id="inputEnd" class="input-field" placeholder="Scrivi la destinazione..." value="Asciano" autocomplete="off">
               <div id="endAutocomplete" class="autocomplete-dropdown"></div>
             </div>
@@ -103,26 +109,26 @@
           </div>
 
           <!-- Filtri e Ordinamento Schede -->
-          <div style="margin-top: 18px;">
-            <div class="section-title" style="margin-bottom: 10px;">
+          <div style="margin-top: 14px;">
+            <div class="section-title">
               <span>Opzioni Trovate</span>
               <span id="routeCountBadge" class="badge badge-low-traffic">Pronto</span>
             </div>
 
             <div class="sort-filter-bar">
-              <button class="filter-chip active" data-sort="traffic"><i class="fa-solid fa-road"></i> Arteria Principale</button>
-              <button class="filter-chip" data-sort="elevation"><i class="fa-solid fa-mountain"></i> Minor Dislivello</button>
+              <button class="filter-chip active" data-sort="traffic"><i class="fa-solid fa-road"></i> Principale</button>
+              <button class="filter-chip" data-sort="elevation"><i class="fa-solid fa-mountain"></i> Minor D+</button>
               <button class="filter-chip" data-sort="distance"><i class="fa-solid fa-ruler-horizontal"></i> Più Breve</button>
             </div>
           </div>
 
           <!-- LISTA SCHEDE TECNICHE DELLE ROTTE -->
-          <div id="routeCardsContainer" class="route-cards-list" style="margin-top: 12px;">
-            <div style="padding: 24px 16px; text-align: center; color: var(--text-muted); background: var(--bg-card); border-radius: var(--radius-md); border: 1px solid var(--border-color);">
-              <i class="fa-solid fa-map-location-dot" style="font-size: 2rem; color: var(--brand-primary); margin-bottom: 10px;"></i>
-              <div style="font-weight: 700; font-size: 0.92rem; color: var(--text-main); margin-bottom: 4px;">Scegli l'itinerario ciclistico</div>
-              <div style="font-size: 0.78rem; line-height: 1.4; color: var(--text-muted);">
-                Inserisci Partenza e Arrivo per elaborare le migliori opzioni per la tua pedalata.
+          <div id="routeCardsContainer" class="route-cards-list" style="margin-top: 10px;">
+            <div style="padding: 20px 14px; text-align: center; color: var(--text-muted); background: var(--bg-card); border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+              <i class="fa-solid fa-map-location-dot" style="font-size: 1.8rem; color: var(--brand-primary); margin-bottom: 8px;"></i>
+              <div style="font-weight: 700; font-size: 0.88rem; color: var(--text-main); margin-bottom: 4px;">Scegli l'itinerario ciclistico</div>
+              <div style="font-size: 0.76rem; line-height: 1.4; color: var(--text-muted);">
+                Inserisci Partenza e Arrivo per elaborare le opzioni di percorso.
               </div>
             </div>
           </div>
@@ -131,25 +137,25 @@
 
         <!-- TAB 2: PREFERITI & CARTELLE (PERSISTENZA LOCAL STORAGE) -->
         <div id="tabFavorites" class="tab-pane" style="display: none;">
-          <div class="section-title" style="margin-bottom: 12px;">
+          <div class="section-title">
             <span>Cartelle & Percorsi Preferiti</span>
-            <button id="btnCreateFolder" class="btn btn-secondary" style="padding: 3px 8px; font-size: 0.72rem;">
+            <button id="btnCreateFolder" class="btn btn-secondary" style="padding: 2px 7px; font-size: 0.7rem;">
               <i class="fa-solid fa-folder-plus"></i> + Cartella
             </button>
           </div>
 
           <!-- Filtro Cartelle -->
-          <div id="folderFilterBar" class="folder-chip-bar" style="margin-bottom: 14px;">
+          <div id="folderFilterBar" class="folder-chip-bar" style="margin-bottom: 12px;">
             <button class="folder-chip active" data-folder="all"><i class="fa-solid fa-folder"></i> Tutti</button>
           </div>
 
           <!-- Lista Percorsi Salvati nei Preferiti -->
           <div id="favoritesContainer" class="route-cards-list">
-            <div style="padding: 24px 16px; text-align: center; color: var(--text-muted); background: var(--bg-card); border-radius: var(--radius-md); border: 1px solid var(--border-color);">
-              <i class="fa-solid fa-star" style="font-size: 2rem; color: var(--brand-accent); margin-bottom: 10px;"></i>
-              <div style="font-weight: 700; font-size: 0.92rem; color: var(--text-main); margin-bottom: 4px;">Nessun percorso nei preferiti</div>
-              <div style="font-size: 0.78rem; line-height: 1.4; color: var(--text-muted);">
-                Clicca sulla stella <i class="fa-solid fa-star" style="color: #f59e0b;"></i> su qualsiasi rotta calcolata per salvarla nelle tue cartelle personalizzate.
+            <div style="padding: 20px 14px; text-align: center; color: var(--text-muted); background: var(--bg-card); border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+              <i class="fa-solid fa-star" style="font-size: 1.8rem; color: var(--brand-accent); margin-bottom: 8px;"></i>
+              <div style="font-weight: 700; font-size: 0.88rem; color: var(--text-main); margin-bottom: 4px;">Nessun percorso nei preferiti</div>
+              <div style="font-size: 0.76rem; line-height: 1.4; color: var(--text-muted);">
+                Clicca sulla stella su qualsiasi rotta per salvarla qui.
               </div>
             </div>
           </div>
@@ -162,18 +168,18 @@
           </div>
 
           <!-- Upload Drag & Drop -->
-          <div id="dropZone" class="upload-zone" style="margin-top: 16px;">
+          <div id="dropZone" class="upload-zone" style="margin-top: 10px;">
             <i class="fa-solid fa-file-circle-plus upload-icon"></i>
             <div class="upload-text">Trascina qui il file .FIT o .GPX</div>
-            <div class="upload-subtext">Compatibile con Garmi, Bryton, Wahoo o Strava</div>
+            <div class="upload-subtext">Compatibile con Garmin, Bryton, Wahoo o Strava</div>
             <input type="file" id="fileInput" accept=".fit,.gpx" style="display: none;">
           </div>
 
           <!-- Risultati Analisi -->
-          <div id="analysisResults" style="display: none; margin-top: 20px;">
-            <div class="section-title" style="margin-bottom: 12px;">
+          <div id="analysisResults" style="display: none; margin-top: 14px;">
+            <div class="section-title">
               <span>Metriche Allenamento</span>
-              <span id="workoutDate" style="font-size: 0.75rem; color: var(--brand-accent);">--/--/----</span>
+              <span id="workoutDate" style="font-size: 0.74rem; color: var(--brand-accent); font-family: var(--font-mono);">--/--/----</span>
             </div>
 
             <div class="spec-metrics-grid">
@@ -204,12 +210,12 @@
             </div>
 
             <!-- Scheda Valutazione Sforzo -->
-            <div class="spec-card" style="margin-top: 12px; cursor: default;">
-              <div class="route-name" style="font-size: 0.88rem; margin-bottom: 6px;">
+            <div class="spec-card" style="margin-top: 10px; cursor: default;">
+              <div class="route-name" style="font-size: 0.84rem; margin-bottom: 4px;">
                 <i class="fa-solid fa-heart-pulse" style="color: var(--brand-primary);"></i> Valutazione Sforzo & Calorie
               </div>
-              <div style="font-size: 0.82rem; color: var(--text-muted);">
-                Calorie Stimate: <strong id="resCalories" style="color: var(--text-main);">-- kcal</strong> |
+              <div style="font-size: 0.78rem; color: var(--text-muted);">
+                Calorie Stimate: <strong id="resCalories" style="color: var(--text-main); font-family: var(--font-mono);">-- kcal</strong> |
                 Indice Sforzo: <strong id="resEffort" style="color: var(--slope-flat);">Moderato</strong>
               </div>
             </div>
@@ -224,9 +230,14 @@
     <section class="map-container-wrapper">
       <div id="map"></div>
 
+      <!-- BOTTONE TOGGLE SIDEBAR -->
+      <button id="btnToggleSidebar" class="sidebar-toggle-btn" title="Comprimi / Espandi Sidebar">
+        <i class="fa-solid fa-bars"></i>
+      </button>
+
       <!-- LEGENDA PENDENZE MAPPA -->
       <div class="map-slope-legend">
-        <div class="slope-legend-title">Pendenza % Strada</div>
+        <div class="slope-legend-title">Pendenza</div>
         <div class="slope-legend-items">
           <div class="slope-legend-item"><div class="slope-color-box" style="background: var(--slope-flat);"></div> &lt;3%</div>
           <div class="slope-legend-item"><div class="slope-color-box" style="background: var(--slope-mild);"></div> 3-6%</div>
@@ -243,7 +254,7 @@
             <i class="fa-solid fa-chart-area" style="color: var(--brand-primary);"></i>
             <span id="chartRouteTitle">Profilo Altimetrico & Pendenze</span>
           </div>
-          <button id="btnToggleChart" class="btn btn-secondary" style="padding: 3px 10px; font-size: 0.75rem;">
+          <button id="btnToggleChart" class="btn btn-secondary" style="padding: 2px 8px; font-size: 0.72rem;">
             <i class="fa-solid fa-chevron-down"></i> Minimizza
           </button>
         </div>
@@ -284,7 +295,7 @@
     <div class="modal-container">
       <div class="modal-header">
         <div class="modal-title-group">
-          <div id="modalRouteColorPill" class="route-color-pill" style="width: 14px; height: 14px;"></div>
+          <div id="modalRouteColorPill" class="route-color-pill" style="width: 10px; height: 10px;"></div>
           <h2 id="modalRouteTitle" class="modal-title">Dettaglio Percorso</h2>
         </div>
         <button id="btnCloseModal" class="modal-close-btn">&times;</button>
@@ -292,14 +303,14 @@
 
       <div class="modal-body">
         <!-- Badges & Sicurezza -->
-        <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px;">
+        <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px;">
           <span id="modalSafetyBadge" class="badge badge-low-traffic"></span>
           <span id="modalDifficultyBadge" class="badge badge-low-traffic"></span>
           <span id="modalCategoryBadge" class="badge badge-med-traffic"></span>
         </div>
 
         <!-- Griglia Metriche -->
-        <div class="spec-metrics-grid" style="margin-bottom: 14px;">
+        <div class="spec-metrics-grid" style="margin-bottom: 12px;">
           <div class="metric-box">
             <div id="modalDistVal" class="metric-val">-- <span>km</span></div>
             <div class="metric-lbl">Distanza Totale</div>
@@ -315,36 +326,126 @@
         </div>
 
         <!-- Stime Tempi -->
-        <div style="display: flex; justify-content: space-between; font-size: 0.78rem; color: var(--text-muted); background: var(--bg-input); padding: 8px 12px; border-radius: var(--radius-sm); margin-bottom: 14px; border: 1px solid var(--border-color);">
-          <span>Velocità @20km/h: <strong id="modalSpeed20" style="color: var(--text-main);">--</strong></span>
+        <div style="display: flex; justify-content: space-between; font-size: 0.76rem; color: var(--text-muted); background: var(--bg-input); padding: 7px 10px; border-radius: var(--radius-xs); margin-bottom: 12px; border: 1px solid var(--border-color); font-family: var(--font-mono);">
+          <span>@20km/h: <strong id="modalSpeed20" style="color: var(--text-main);">--</strong></span>
           <span>@25km/h: <strong id="modalSpeed25" style="color: var(--text-main);">--</strong></span>
           <span>@30km/h: <strong id="modalSpeed30" style="color: var(--text-main);">--</strong></span>
         </div>
 
         <!-- Itinerario Vie -->
-        <div class="input-group" style="margin-bottom: 14px;">
-          <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-main);"><i class="fa-solid fa-road" style="color: var(--brand-primary);"></i> Itinerario Stradale Completo</label>
-          <div id="modalStreetSummary" style="font-size: 0.82rem; color: var(--text-muted); background: var(--bg-input); padding: 10px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); line-height: 1.5;"></div>
+        <div class="input-group" style="margin-bottom: 12px;">
+          <label style="font-size: 0.78rem; font-weight: 700; color: var(--text-main);"><i class="fa-solid fa-road" style="color: var(--brand-primary);"></i> Itinerario Stradale Completo</label>
+          <div id="modalStreetSummary" style="font-size: 0.78rem; color: var(--text-muted); background: var(--bg-input); padding: 8px 10px; border-radius: var(--radius-xs); border: 1px solid var(--border-color); line-height: 1.4;"></div>
         </div>
 
         <!-- Canvas Multi-Metrica nel Modal -->
-        <div style="margin-bottom: 10px;">
-          <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-main); margin-bottom: 6px; display: block;"><i class="fa-solid fa-chart-line" style="color: var(--brand-primary);"></i> Telemetria Multi-Metrica (Quota, Velocità, Cadenza, HR)</label>
-          <div style="height: 170px; position: relative; background: var(--bg-input); border-radius: var(--radius-sm); padding: 8px; border: 1px solid var(--border-color);">
+        <div style="margin-bottom: 8px;">
+          <label style="font-size: 0.78rem; font-weight: 700; color: var(--text-main); margin-bottom: 4px; display: block;"><i class="fa-solid fa-chart-line" style="color: var(--brand-primary);"></i> Telemetria Multi-Metrica (Quota, Velocità, Cadenza, HR)</label>
+          <div style="height: 160px; position: relative; background: var(--bg-input); border-radius: var(--radius-xs); padding: 6px; border: 1px solid var(--border-color);">
             <canvas id="modalMultiMetricChart"></canvas>
           </div>
         </div>
       </div>
 
       <div class="modal-footer">
-        <button id="btnModalSaveFavorite" class="btn btn-secondary" style="padding: 8px 14px;">
-          <i class="fa-solid fa-star" style="color: #f59e0b;"></i> Salva nei Preferiti
+        <button id="btnModalSaveFavorite" class="btn btn-secondary">
+          <i class="fa-solid fa-star" style="color: #f59e0b;"></i> Preferiti
         </button>
         <button id="btnModalExportGpx" class="btn btn-primary" style="flex: 1; justify-content: center;">
           <i class="fa-solid fa-download"></i> Esporta .GPX
         </button>
-        <button id="btnModalCloseAction" class="btn btn-secondary" style="padding: 8px 16px;">
+        <button id="btnModalCloseAction" class="btn btn-secondary">
           Chiudi
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       MODAL GUIDA CARICAMENTO PERCORSI BRYTON RIDER 420 & CICLOCOMPUTER
+       ========================================================================== -->
+  <div id="brytonModal" class="modal-overlay">
+    <div class="modal-container" style="max-width: 580px;">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <i class="fa-solid fa-bicycle" style="color: var(--brand-primary); font-size: 1.1rem;"></i>
+          <h2 class="modal-title">Guida Caricamento Bryton Rider 420</h2>
+        </div>
+        <button id="btnCloseBrytonModal" class="modal-close-btn">&times;</button>
+      </div>
+
+      <div class="modal-body" style="gap: 12px; display: flex; flex-direction: column;">
+        <!-- Scheda Sintesi Percorso Selezionato -->
+        <div style="background: var(--bg-card); padding: 10px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <div style="font-size: 0.68rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Percorso Pronto per Bryton</div>
+            <div id="brytonRouteName" style="font-weight: 700; font-size: 0.9rem; color: var(--text-main); margin-top: 2px;">Seleziona un percorso dalla mappa</div>
+          </div>
+          <button id="btnBrytonDownloadGpx" class="btn btn-primary" style="padding: 5px 10px; font-size: 0.76rem;">
+            <i class="fa-solid fa-download"></i> Download .GPX
+          </button>
+        </div>
+
+        <!-- Opzioni Guida 3 Metodi dal Manuale -->
+        <div style="display: flex; gap: 4px; background: var(--bg-input); padding: 3px; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+          <button class="bryton-tab-btn active" data-btab="app" style="flex: 1; padding: 6px; font-size: 0.72rem; font-weight: 700; border-radius: var(--radius-xs); border: none; background: var(--brand-primary); color: #110e0d; cursor: pointer;">
+            <i class="fa-solid fa-mobile-screen"></i> App Bryton Active
+          </button>
+          <button class="bryton-tab-btn" data-btab="usb" style="flex: 1; padding: 6px; font-size: 0.72rem; font-weight: 700; border-radius: var(--radius-xs); border: none; background: transparent; color: var(--text-muted); cursor: pointer;">
+            <i class="fa-solid fa-usb"></i> Cavo USB PC
+          </button>
+          <button class="bryton-tab-btn" data-btab="start" style="flex: 1; padding: 6px; font-size: 0.72rem; font-weight: 700; border-radius: var(--radius-xs); border: none; background: transparent; color: var(--text-muted); cursor: pointer;">
+            <i class="fa-solid fa-play"></i> Avvio sul Rider 420
+          </button>
+        </div>
+
+        <!-- TAB CONTENT 1: APP BRYTON ACTIVE -->
+        <div id="bTabApp" class="bryton-tab-content">
+          <div style="font-size: 0.82rem; font-weight: 700; color: var(--text-main); margin-bottom: 6px;">
+            <i class="fa-solid fa-wifi" style="color: var(--brand-primary);"></i> Sincronizzazione Bluetooth diretta da Smartphone (Consigliata)
+          </div>
+          <ol style="font-size: 0.78rem; color: var(--text-muted); padding-left: 16px; line-height: 1.5; display: flex; flex-direction: column; gap: 4px;">
+            <li>Clicca su <strong>Download .GPX</strong> e salva il file sul tuo smartphone.</li>
+            <li>Apri il file .GPX scaricato e seleziona <strong>"Apri con Bryton Active"</strong>.</li>
+            <li>Assegna un nome all'itinerario e premi <strong>OK</strong>.</li>
+            <li>Vai nella scheda <strong>Percorso</strong> dell'app Bryton Active.</li>
+            <li>Tocca il percorso salvato e premi l'icona in alto a destra <strong>"Invia al dispositivo"</strong> via Bluetooth.</li>
+          </ol>
+        </div>
+
+        <!-- TAB CONTENT 2: CAVO USB PC -->
+        <div id="bTabUsb" class="bryton-tab-content" style="display: none;">
+          <div style="font-size: 0.82rem; font-weight: 700; color: var(--text-main); margin-bottom: 6px;">
+            <i class="fa-solid fa-folder-open" style="color: var(--brand-primary);"></i> Copia diretta della traccia via Cavo USB da PC
+          </div>
+          <ol style="font-size: 0.78rem; color: var(--text-muted); padding-left: 16px; line-height: 1.5; display: flex; flex-direction: column; gap: 4px;">
+            <li>Collega il <strong>Bryton Rider 420</strong> al computer tramite cavo USB.</li>
+            <li>Apri l'unità di memoria di massa USB del ciclocomputer.</li>
+            <li>Copia il file <strong>.GPX</strong> appena scaricato dal sito.</li>
+            <li>Incollalo direttamente nella cartella <strong>`Extra-percorso`</strong> (o <i>`Extra-track`</i>).</li>
+            <li>Scollega in sicurezza il dispositivo dal PC.</li>
+          </ol>
+        </div>
+
+        <!-- TAB CONTENT 3: AVVIO SUL RIDER 420 -->
+        <div id="bTabStart" class="bryton-tab-content" style="display: none;">
+          <div style="font-size: 0.82rem; font-weight: 700; color: var(--text-main); margin-bottom: 6px;">
+            <i class="fa-solid fa-compass" style="color: var(--brand-primary);"></i> Come avviare il percorso sul ciclocomputer
+          </div>
+          <ol style="font-size: 0.78rem; color: var(--text-muted); padding-left: 16px; line-height: 1.5; display: flex; flex-direction: column; gap: 4px;">
+            <li>Accendi il Rider 420 e attendi l'acquisizione dei satelliti GPS.</li>
+            <li>Usa il tasto in basso a sinistra <strong>PAGINA (PAGE ︾)</strong> per evidenziare <strong>Segui percorso</strong>.</li>
+            <li>Premi il tasto in basso a destra <strong>OK/GIRO (OK ⁃ LAP)</strong> per accedere.</li>
+            <li>Seleziona <strong>Visualizza</strong> e premi <strong>OK</strong>.</li>
+            <li>Seleziona il percorso salvato e premi <strong>OK</strong> per avviare la navigazione.</li>
+          </ol>
+        </div>
+
+      </div>
+
+      <div class="modal-footer" style="margin-top: 8px;">
+        <button id="btnCloseBrytonAction" class="btn btn-secondary" style="width: 100%; justify-content: center;">
+          Chiudi Guida Bryton
         </button>
       </div>
     </div>
