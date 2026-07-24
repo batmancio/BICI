@@ -412,6 +412,4 @@ document.addEventListener('DOMContentLoaded', () => {
   btnToggleChart.addEventListener('click', () => {
     elevationPanel.classList.toggle('collapsed');
   });
-
-  handleCalculateRoutes();
 });

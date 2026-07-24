@@ -161,6 +161,10 @@ export class MapManager {
     const profileCount = elevationProfile.length;
     const stepRatio = (profileCount - 1) / (coords.length - 1);
 
+    // Raggruppa punti adiacenti con lo stesso colore di pendenza per evitare il blocco del DOM
+    let currentGroup = [coords[0]];
+    let currentGradeColor = null;
+
     for (let i = 0; i < coords.length - 1; i++) {
       const p1 = coords[i];
       const p2 = coords[i + 1];
@@ -178,15 +182,35 @@ export class MapManager {
         }
       }
 
-      const segmentColor = this.getSlopeColor(grade);
+      const segColor = this.getSlopeColor(grade);
 
-      const segmentPolyline = L.polyline([p1, p2], {
-        color: segmentColor,
+      if (currentGradeColor === null) {
+        currentGradeColor = segColor;
+      }
+
+      if (segColor === currentGradeColor) {
+        currentGroup.push(p2);
+      } else {
+        if (currentGroup.length >= 2) {
+          const poly = L.polyline(currentGroup, {
+            color: currentGradeColor,
+            weight: 6,
+            opacity: 0.95
+          }).addTo(this.map);
+          this.selectedSlopeLayers.push(poly);
+        }
+        currentGroup = [p1, p2];
+        currentGradeColor = segColor;
+      }
+    }
+
+    if (currentGroup.length >= 2 && currentGradeColor) {
+      const poly = L.polyline(currentGroup, {
+        color: currentGradeColor,
         weight: 6,
         opacity: 0.95
       }).addTo(this.map);
-
-      this.selectedSlopeLayers.push(segmentPolyline);
+      this.selectedSlopeLayers.push(poly);
     }
   }
 
