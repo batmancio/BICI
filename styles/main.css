@@ -675,10 +675,16 @@ body {
   background-color: rgba(11, 20, 26, 0.75);
   backdrop-filter: blur(6px);
   z-index: 9999;
-  display: flex;
+  display: none !important;
+  pointer-events: none !important;
   align-items: center;
   justify-content: center;
   padding: 20px;
+}
+
+.modal-overlay.active {
+  display: flex !important;
+  pointer-events: auto !important;
   animation: fadeIn 0.2s ease-in-out;
 }
 

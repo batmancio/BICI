@@ -1273,7 +1273,7 @@
 
       document.getElementById('modalStreetSummary').innerHTML = route.streetSummary || 'Strade provinciali e vicinali';
 
-      routeDetailModal.style.display = 'flex';
+      routeDetailModal.classList.add('active');
 
       if (modalMultiMetricCanvas) {
         analyticsManager.renderMultiMetricChart(modalMultiMetricCanvas, route.elevationProfile, route.color);
@@ -1281,7 +1281,9 @@
     }
 
     function closeModal() {
-      if (routeDetailModal) routeDetailModal.style.display = 'none';
+      if (routeDetailModal) {
+        routeDetailModal.classList.remove('active');
+      }
     }
 
     if (btnCloseModal) btnCloseModal.addEventListener('click', closeModal);
