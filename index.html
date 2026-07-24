@@ -24,22 +24,9 @@
        ========================================================================== -->
   <header class="app-header">
     <div class="brand-logo">
-      <svg class="cyclist-logo-svg" viewBox="0 0 100 100" width="30" height="30" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <!-- Helmet Vent Contour -->
-        <path d="M50 8C33 8 20 18 16 32C15 36 17 39 21 40C23 40.5 27 40.5 32 40.5H68C73 40.5 77 40.5 79 40C83 39 85 36 84 32C80 18 67 8 50 8Z" fill="var(--brand-primary)"/>
-        <path d="M50 12C45 12 40 16 38 23H62C60 16 55 12 50 12Z" fill="var(--bg-header)"/>
-        <path d="M25 24C28 17 35 13 41 12C38 16 35 22 33 27L25 24Z" fill="var(--bg-header)"/>
-        <path d="M75 24C72 17 65 13 59 12C62 16 65 22 67 27L75 24Z" fill="var(--bg-header)"/>
-        <path d="M20 31C24 29 30 29 34 29H66C70 29 76 29 80 31C78 35 73 37 68 37H32C27 37 22 35 20 31Z" fill="var(--bg-header)"/>
-        <!-- Shield Visor / Sunglasses -->
-        <path d="M22 43C28 42 40 43.5 50 46C60 43.5 72 42 78 43C82 48 81 57 74 60C64 64 54 60 50 56C46 60 36 64 26 60C19 57 18 48 22 43Z" fill="var(--bg-main)" stroke="var(--brand-primary)" stroke-width="2.5"/>
-        <path d="M30 47V56" stroke="var(--brand-accent)" stroke-width="2.5" stroke-linecap="round"/>
-        <path d="M70 47V56" stroke="var(--brand-accent)" stroke-width="2.5" stroke-linecap="round"/>
-        <!-- Jawline Profile -->
-        <path d="M21 50V56C21 68 34 82 50 90C66 82 79 68 79 56V50" stroke="var(--brand-primary)" stroke-width="3" stroke-linecap="round" fill="none"/>
-        <path d="M46 68L50 71L54 68" stroke="var(--brand-primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-        <path d="M42 77H58" stroke="var(--brand-primary)" stroke-width="2.5" stroke-linecap="round" fill="none"/>
-      </svg>
+      <div class="brand-logo-container">
+        <img src="./ChatGPT Image 25 lug 2026, 01_37_46.png" class="brand-logo-img" alt="Strade Bianche Logo">
+      </div>
       <div class="brand-title">Strade <span>Bianche</span></div>
     </div>
 
@@ -316,7 +303,7 @@
         </div>
 
         <!-- Griglia Metriche -->
-        <div class="spec-metrics-grid" style="margin-bottom: 12px;">
+        <div class="spec-metrics-grid" style="margin-bottom: 12px; grid-template-columns: repeat(4, 1fr);">
           <div class="metric-box">
             <div id="modalDistVal" class="metric-val">-- <span>km</span></div>
             <div class="metric-lbl">Distanza Totale</div>
@@ -328,6 +315,10 @@
           <div class="metric-box">
             <div id="modalMaxGradeVal" class="metric-val">--%</div>
             <div class="metric-lbl">Pendenza Max</div>
+          </div>
+          <div class="metric-box">
+            <div id="modalMaxEleVal" class="metric-val">-- <span>m</span></div>
+            <div class="metric-lbl">Cima / Quota Max</div>
           </div>
         </div>
 
@@ -344,10 +335,10 @@
           <div id="modalStreetSummary" style="font-size: 0.78rem; color: var(--text-muted); background: var(--bg-input); padding: 8px 10px; border-radius: var(--radius-xs); border: 1px solid var(--border-color); line-height: 1.4;"></div>
         </div>
 
-        <!-- Canvas Multi-Metrica nel Modal -->
+        <!-- Canvas Altimetria & Pendenze nel Modal -->
         <div style="margin-bottom: 8px;">
-          <label style="font-size: 0.78rem; font-weight: 700; color: var(--text-main); margin-bottom: 4px; display: block;"><i class="fa-solid fa-chart-line" style="color: var(--brand-primary);"></i> Telemetria Multi-Metrica (Quota, Velocità, Cadenza, HR)</label>
-          <div style="height: 160px; position: relative; background: var(--bg-input); border-radius: var(--radius-xs); padding: 6px; border: 1px solid var(--border-color);">
+          <label style="font-size: 0.78rem; font-weight: 700; color: var(--text-main); margin-bottom: 4px; display: block;"><i class="fa-solid fa-chart-area" style="color: var(--brand-primary);"></i> Profilo Altimetrico & Pendenze (%)</label>
+          <div style="height: 170px; position: relative; background: var(--bg-input); border-radius: var(--radius-xs); padding: 6px; border: 1px solid var(--border-color);">
             <canvas id="modalMultiMetricChart"></canvas>
           </div>
         </div>

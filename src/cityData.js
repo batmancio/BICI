@@ -5,7 +5,9 @@
 export const ITALIAN_CITIES = [
   // LAZIO & CASTELLI ROMANI / AGRO PONTINO
   { name: "Aprilia", region: "Lazio", lat: 41.5956, lon: 12.6525 },
+  { name: "Lanuvio", region: "Lazio", lat: 41.6744, lon: 12.7003 },
   { name: "Albano Laziale", region: "Lazio", lat: 41.7288, lon: 12.6582 },
+  { name: "Cecchina", region: "Lazio", lat: 41.6967, lon: 12.6372 },
   { name: "Anzio", region: "Lazio", lat: 41.4475, lon: 12.6283 },
   { name: "Nettuno", region: "Lazio", lat: 41.4586, lon: 12.6631 },
   { name: "Pomezia", region: "Lazio", lat: 41.6692, lon: 12.5019 },

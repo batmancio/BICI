@@ -8,7 +8,9 @@
   const ITALIAN_CITIES = [
     // LAZIO & CASTELLI ROMANI / AGRO PONTINO
     { name: "Aprilia", region: "Lazio", lat: 41.5956, lon: 12.6525 },
+    { name: "Lanuvio", region: "Lazio", lat: 41.6744, lon: 12.7003 },
     { name: "Albano Laziale", region: "Lazio", lat: 41.7288, lon: 12.6582 },
+    { name: "Cecchina", region: "Lazio", lat: 41.6967, lon: 12.6372 },
     { name: "Anzio", region: "Lazio", lat: 41.4475, lon: 12.6283 },
     { name: "Nettuno", region: "Lazio", lat: 41.4586, lon: 12.6631 },
     { name: "Pomezia", region: "Lazio", lat: 41.6692, lon: 12.5019 },
@@ -687,6 +689,59 @@
       };
     }
 
+    cleanRouteSpurs(coords) {
+      if (!coords || coords.length < 5) return coords;
+
+      let cleaned = [...coords];
+      let changed = true;
+      let maxPasses = 3;
+
+      while (changed && maxPasses > 0) {
+        changed = false;
+        maxPasses--;
+
+        for (let i = 0; i < cleaned.length - 4; i++) {
+          for (let j = i + 4; j < Math.min(cleaned.length, i + 60); j++) {
+            if (i === 0 && j === cleaned.length - 1) continue;
+
+            const pStart = cleaned[i];
+            const pEnd = cleaned[j];
+            const directDist = this.calculateHaversineDistance(pStart, pEnd);
+
+            if (directDist < 0.06) {
+              let pathDist = 0;
+              let maxDistFromStart = 0;
+
+              for (let k = i; k < j; k++) {
+                const dSeg = this.calculateHaversineDistance(cleaned[k], cleaned[k + 1]);
+                pathDist += dSeg;
+                const dFromStart = this.calculateHaversineDistance(pStart, cleaned[k]);
+                if (dFromStart > maxDistFromStart) maxDistFromStart = dFromStart;
+              }
+
+              if (pathDist > 0.06 && pathDist < 4.0 && (maxDistFromStart * 2.3 >= pathDist)) {
+                cleaned.splice(i + 1, j - i);
+                changed = true;
+                break;
+              }
+            }
+          }
+          if (changed) break;
+        }
+      }
+
+      return cleaned;
+    }
+
+    calculateCoordsDistance(coords) {
+      if (!coords || coords.length < 2) return 0;
+      let dist = 0;
+      for (let i = 0; i < coords.length - 1; i++) {
+        dist += this.calculateHaversineDistance(coords[i], coords[i + 1]);
+      }
+      return dist;
+    }
+
     async fetchOSRMRoute(startCoords, endCoords, viaCoordsList = null, requestAlternatives = false) {
       let waypoints = [startCoords];
       if (Array.isArray(viaCoordsList)) {
@@ -696,11 +751,18 @@
 
       const waypointsStr = waypoints.map(pt => `${pt[1]},${pt[0]}`).join(';');
       const altParam = requestAlternatives ? '&alternatives=3' : '';
+      const straightParam = '&continue_straight=true';
+
+      let radiusesParam = '';
+      if (waypoints.length > 2) {
+        const rads = waypoints.map((w, idx) => (idx === 0 || idx === waypoints.length - 1) ? 'unlimited' : '600');
+        radiusesParam = `&radiuses=${rads.join(';')}`;
+      }
 
       const endpoints = [
-        `https://routing.openstreetmap.de/routed-bike/route/v1/biking/${waypointsStr}?overview=full&geometries=geojson&steps=true${altParam}`,
-        `https://router.project-osrm.org/route/v1/driving/${waypointsStr}?overview=full&geometries=geojson&steps=true${altParam}`,
-        `https://routing.openstreetmap.de/routed-car/route/v1/driving/${waypointsStr}?overview=full&geometries=geojson&steps=true${altParam}`
+        `https://routing.openstreetmap.de/routed-bike/route/v1/biking/${waypointsStr}?overview=full&geometries=geojson&steps=true${altParam}${straightParam}${radiusesParam}`,
+        `https://routing.openstreetmap.de/routed-car/route/v1/driving/${waypointsStr}?overview=full&geometries=geojson&steps=true${altParam}${straightParam}${radiusesParam}`,
+        `https://router.project-osrm.org/route/v1/driving/${waypointsStr}?overview=full&geometries=geojson&steps=true${altParam}${straightParam}${radiusesParam}`
       ];
 
       for (const url of endpoints) {
@@ -714,10 +776,11 @@
             const data = await res.json();
             if (data && data.code === 'Ok' && data.routes && data.routes.length > 0) {
               const primary = data.routes[0];
+              const primaryCoords = this.cleanRouteSpurs(primary.geometry.coordinates.map(coord => [coord[1], coord[0]]));
               const primaryResult = {
-                distanceMeters: primary.distance,
+                distanceMeters: this.calculateCoordsDistance(primaryCoords) * 1000 || primary.distance,
                 durationSeconds: primary.duration,
-                coords: primary.geometry.coordinates.map(coord => [coord[1], coord[0]]),
+                coords: primaryCoords,
                 streetNames: this.extractStreetNames(primary.legs),
                 alternatives: []
               };
@@ -725,10 +788,11 @@
               if (data.routes.length > 1) {
                 for (let i = 1; i < data.routes.length; i++) {
                   const altRoute = data.routes[i];
+                  const altCoords = this.cleanRouteSpurs(altRoute.geometry.coordinates.map(coord => [coord[1], coord[0]]));
                   primaryResult.alternatives.push({
-                    distanceMeters: altRoute.distance,
+                    distanceMeters: this.calculateCoordsDistance(altCoords) * 1000 || altRoute.distance,
                     durationSeconds: altRoute.duration,
-                    coords: altRoute.geometry.coordinates.map(coord => [coord[1], coord[0]]),
+                    coords: altCoords,
                     streetNames: this.extractStreetNames(altRoute.legs)
                   });
                 }
@@ -772,8 +836,9 @@
       let rawStreetNames = [];
 
       if (rawOsrm && rawOsrm.coords && rawOsrm.coords.length > 1) {
-        coords = rawOsrm.coords;
-        distanceKm = parseFloat((rawOsrm.distanceMeters / 1000).toFixed(1));
+        coords = this.cleanRouteSpurs(rawOsrm.coords);
+        const calculatedDist = this.calculateCoordsDistance(coords);
+        distanceKm = parseFloat((calculatedDist > 0 ? calculatedDist : rawOsrm.distanceMeters / 1000).toFixed(1));
         rawStreetNames = rawOsrm.streetNames || [];
         if (rawStreetNames.length > 0) {
           streetSummary = rawStreetNames.slice(0, 4).join(' → ');
@@ -791,7 +856,7 @@
 
       const roadSafety = this.analyzeRoadSafety(rawStreetNames);
 
-      const { elevationProfile, elevationGainM, elevationLossM, maxGradePercent, avgGradePercent } =
+      const { elevationProfile, elevationGainM, elevationLossM, maxElevationM, maxGradePercent, avgGradePercent } =
         await this.fetchElevationProfile(coords, distanceKm);
 
       const speed20 = this.formatDuration(distanceKm / 20);
@@ -807,7 +872,7 @@
 
       return {
         id, name, color, categoryTag, streetSummary, distanceKm,
-        elevationGainM, elevationLossM, maxGradePercent, avgGradePercent, difficulty,
+        elevationGainM, elevationLossM, maxElevationM, maxGradePercent, avgGradePercent, difficulty,
         roadSafety, routeMode,
         timeEstimates: { speed20, speed25, speed30 }, coords, elevationProfile, startCoords, endCoords
       };
@@ -816,12 +881,12 @@
     async fetchElevationProfile(coords, totalDistanceKm) {
       const defaultRes = {
         elevationProfile: this.generateEstimatedElevationProfile(totalDistanceKm, 160),
-        elevationGainM: 160, elevationLossM: 155, maxGradePercent: 4.8, avgGradePercent: 1.5
+        elevationGainM: 160, elevationLossM: 155, maxElevationM: 210, maxGradePercent: 4.8, avgGradePercent: 1.5
       };
 
       if (!coords || coords.length < 2) return defaultRes;
 
-      const sampleSize = Math.min(25, coords.length);
+      const sampleSize = Math.min(80, Math.max(30, coords.length));
       const sampledCoords = [];
       const stepIndex = (coords.length - 1) / (sampleSize - 1);
 
@@ -835,7 +900,7 @@
       try {
         const url = `https://api.open-meteo.com/v1/elevation?latitude=${lats}&longitude=${lons}`;
         const controller = new AbortController();
-        const tid = setTimeout(() => controller.abort(), 2000);
+        const tid = setTimeout(() => controller.abort(), 2500);
         const res = await fetch(url, { signal: controller.signal });
         clearTimeout(tid);
 
@@ -843,32 +908,53 @@
           const data = await res.json();
           if (data && data.elevation && data.elevation.length === sampledCoords.length) {
             const rawElevations = data.elevation;
-            let gainM = 0, lossM = 0, maxGrade = 0;
+            
+            const smoothed = [];
+            for (let i = 0; i < rawElevations.length; i++) {
+              if (i === 0) {
+                smoothed.push((rawElevations[0] * 2 + rawElevations[1]) / 3);
+              } else if (i === rawElevations.length - 1) {
+                smoothed.push((rawElevations[i] * 2 + rawElevations[i - 1]) / 3);
+              } else {
+                smoothed.push((rawElevations[i - 1] + rawElevations[i] * 2 + rawElevations[i + 1]) / 4);
+              }
+            }
+
+            let gainM = 0, lossM = 0, maxGrade = 0, maxElev = -9999;
             const profile = [];
             const distStep = totalDistanceKm / (sampledCoords.length - 1);
 
             for (let i = 0; i < sampledCoords.length; i++) {
-              const currentElev = Math.round(rawElevations[i]);
+              const currentElev = Math.round(smoothed[i]);
               const currentDistKm = parseFloat((i * distStep).toFixed(1));
+              if (currentElev > maxElev) maxElev = currentElev;
 
+              let segmentGrade = 0;
               if (i > 0) {
-                const prevElev = Math.round(rawElevations[i - 1]);
+                const prevElev = Math.round(smoothed[i - 1]);
                 const diff = currentElev - prevElev;
-                if (diff > 0) gainM += diff; else lossM += Math.abs(diff);
+                if (diff >= 1.2) gainM += diff;
+                else if (diff <= -1.2) lossM += Math.abs(diff);
+
                 const segmentDistMeters = distStep * 1000;
                 if (segmentDistMeters > 0) {
-                  const grade = (Math.abs(diff) / segmentDistMeters) * 100;
-                  if (grade > maxGrade) maxGrade = parseFloat(grade.toFixed(1));
+                  segmentGrade = parseFloat(((diff / segmentDistMeters) * 100).toFixed(1));
+                  if (Math.abs(segmentGrade) > maxGrade) maxGrade = Math.abs(segmentGrade);
                 }
               }
-              profile.push({ distanceKm: currentDistKm, elevationM: currentElev });
+              profile.push({
+                distanceKm: currentDistKm,
+                elevationM: currentElev,
+                slopeGrade: segmentGrade
+              });
             }
 
             return {
               elevationProfile: profile,
-              elevationGainM: gainM || 140,
-              elevationLossM: lossM || 135,
-              maxGradePercent: Math.min(18, Math.max(1.5, maxGrade)),
+              elevationGainM: Math.round(gainM) || 140,
+              elevationLossM: Math.round(lossM) || 135,
+              maxElevationM: maxElev > -9000 ? maxElev : 210,
+              maxGradePercent: Math.min(22, Math.max(1.5, maxGrade)),
               avgGradePercent: totalDistanceKm > 0 ? parseFloat((gainM / (totalDistanceKm * 10)).toFixed(1)) : 1.0
             };
           }
@@ -1466,12 +1552,26 @@
         safetyBadge.innerHTML = `<i class="fa-solid ${safety.iconClass}"></i> ${safety.badgeText}`;
       }
 
-      document.getElementById('modalDifficultyBadge').textContent = route.difficulty;
-      document.getElementById('modalCategoryBadge').textContent = route.categoryTag || 'Itinerario Ciclistico';
+      const diffBadge = document.getElementById('modalDifficultyBadge');
+      if (diffBadge) {
+        diffBadge.className = 'badge badge-low-traffic';
+        diffBadge.textContent = route.difficulty;
+      }
+
+      const catBadge = document.getElementById('modalCategoryBadge');
+      if (catBadge) {
+        catBadge.className = 'badge badge-med-traffic';
+        catBadge.textContent = route.categoryTag || 'Itinerario Ciclistico';
+      }
 
       document.getElementById('modalDistVal').innerHTML = `${route.distanceKm} <span>km</span>`;
       document.getElementById('modalElevGainVal').innerHTML = `${route.elevationGainM} <span>m</span>`;
       document.getElementById('modalMaxGradeVal').textContent = `${route.maxGradePercent}%`;
+
+      const maxEleElem = document.getElementById('modalMaxEleVal');
+      if (maxEleElem) {
+        maxEleElem.innerHTML = `${route.maxElevationM || 180} <span>m</span>`;
+      }
 
       document.getElementById('modalSpeed20').textContent = route.timeEstimates.speed20;
       document.getElementById('modalSpeed25').textContent = route.timeEstimates.speed25;
@@ -1487,7 +1587,10 @@
       routeDetailModal.classList.add('active');
 
       if (modalMultiMetricCanvas) {
-        analyticsManager.renderMultiMetricChart(modalMultiMetricCanvas, route.elevationProfile, route.color);
+        analyticsManager.renderPlannedRouteChart(modalMultiMetricCanvas, route.elevationProfile, route.color, (hoverIdx) => {
+          const coord = route.coords[Math.min(hoverIdx, route.coords.length - 1)];
+          if (coord) mapManager.updateHoverMarker(coord);
+        });
       }
     }
 

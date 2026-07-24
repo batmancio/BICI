@@ -278,8 +278,9 @@ export class RouteExplorerEngine {
     let rawStreetNames = [];
 
     if (rawOsrm && rawOsrm.coords && rawOsrm.coords.length > 1) {
-      coords = rawOsrm.coords;
-      distanceKm = parseFloat((rawOsrm.distanceMeters / 1000).toFixed(1));
+      coords = this.cleanRouteSpurs(rawOsrm.coords);
+      const calculatedDist = this.calculateCoordsDistance(coords);
+      distanceKm = parseFloat((calculatedDist > 0 ? calculatedDist : rawOsrm.distanceMeters / 1000).toFixed(1));
       rawStreetNames = rawOsrm.streetNames || [];
       if (rawStreetNames.length > 0) {
         streetSummary = rawStreetNames.slice(0, 4).join(' → ');
@@ -298,7 +299,7 @@ export class RouteExplorerEngine {
 
     const roadSafety = this.analyzeRoadSafety(rawStreetNames);
 
-    const { elevationProfile, elevationGainM, elevationLossM, maxGradePercent, avgGradePercent } =
+    const { elevationProfile, elevationGainM, elevationLossM, maxElevationM, maxGradePercent, avgGradePercent } =
       await this.fetchElevationProfile(coords, distanceKm);
 
     const speed20 = this.formatDuration(distanceKm / 20);
@@ -321,6 +322,7 @@ export class RouteExplorerEngine {
       distanceKm,
       elevationGainM,
       elevationLossM,
+      maxElevationM,
       maxGradePercent,
       avgGradePercent,
       difficulty,
@@ -335,6 +337,64 @@ export class RouteExplorerEngine {
   }
 
   /**
+   * Algoritmo per eliminare deviazioni inutili a vicoli ciechi / U-turn repentini ("torna indietro")
+   */
+  cleanRouteSpurs(coords) {
+    if (!coords || coords.length < 5) return coords;
+
+    let cleaned = [...coords];
+    let changed = true;
+    let maxPasses = 3;
+
+    while (changed && maxPasses > 0) {
+      changed = false;
+      maxPasses--;
+
+      for (let i = 0; i < cleaned.length - 4; i++) {
+        for (let j = i + 4; j < Math.min(cleaned.length, i + 60); j++) {
+          if (i === 0 && j === cleaned.length - 1) continue;
+
+          const pStart = cleaned[i];
+          const pEnd = cleaned[j];
+          const directDist = this.calculateHaversineDistance(pStart, pEnd);
+
+          // Se i punti i e j si ricongiungono quasi nello stesso punto (< 60 metri)
+          if (directDist < 0.06) {
+            let pathDist = 0;
+            let maxDistFromStart = 0;
+
+            for (let k = i; k < j; k++) {
+              const dSeg = this.calculateHaversineDistance(cleaned[k], cleaned[k + 1]);
+              pathDist += dSeg;
+              const dFromStart = this.calculateHaversineDistance(pStart, cleaned[k]);
+              if (dFromStart > maxDistFromStart) maxDistFromStart = dFromStart;
+            }
+
+            // Se è un'antenna/deviazione vicolo cieco (andata + ritorno, maxDist è circa la metà del percorso)
+            if (pathDist > 0.06 && pathDist < 4.0 && (maxDistFromStart * 2.3 >= pathDist)) {
+              cleaned.splice(i + 1, j - i);
+              changed = true;
+              break;
+            }
+          }
+        }
+        if (changed) break;
+      }
+    }
+
+    return cleaned;
+  }
+
+  calculateCoordsDistance(coords) {
+    if (!coords || coords.length < 2) return 0;
+    let dist = 0;
+    for (let i = 0; i < coords.length - 1; i++) {
+      dist += this.calculateHaversineDistance(coords[i], coords[i + 1]);
+    }
+    return dist;
+  }
+
+  /**
    * Esegue la chiamata all'API OSRM supportando alternative e waypoints multipli
    */
   async fetchOSRMRoute(startCoords, endCoords, viaCoordsList = null, requestAlternatives = false) {
@@ -346,12 +406,19 @@ export class RouteExplorerEngine {
 
     const waypointsStr = waypoints.map(pt => `${pt[1]},${pt[0]}`).join(';');
     const altParam = requestAlternatives ? '&alternatives=3' : '';
+    const straightParam = '&continue_straight=true';
+
+    let radiusesParam = '';
+    if (waypoints.length > 2) {
+      const rads = waypoints.map((w, idx) => (idx === 0 || idx === waypoints.length - 1) ? 'unlimited' : '600');
+      radiusesParam = `&radiuses=${rads.join(';')}`;
+    }
 
     // Multiple public routing endpoints (OpenStreetMap Germany Bike & Standard OSRM Driving)
     const endpoints = [
-      `https://routing.openstreetmap.de/routed-bike/route/v1/biking/${waypointsStr}?overview=full&geometries=geojson&steps=true${altParam}`,
-      `https://router.project-osrm.org/route/v1/driving/${waypointsStr}?overview=full&geometries=geojson&steps=true${altParam}`,
-      `https://routing.openstreetmap.de/routed-car/route/v1/driving/${waypointsStr}?overview=full&geometries=geojson&steps=true${altParam}`
+      `https://routing.openstreetmap.de/routed-bike/route/v1/biking/${waypointsStr}?overview=full&geometries=geojson&steps=true${altParam}${straightParam}${radiusesParam}`,
+      `https://routing.openstreetmap.de/routed-car/route/v1/driving/${waypointsStr}?overview=full&geometries=geojson&steps=true${altParam}${straightParam}${radiusesParam}`,
+      `https://router.project-osrm.org/route/v1/driving/${waypointsStr}?overview=full&geometries=geojson&steps=true${altParam}${straightParam}${radiusesParam}`
     ];
 
     for (const url of endpoints) {
@@ -365,10 +432,11 @@ export class RouteExplorerEngine {
           const data = await res.json();
           if (data && data.code === 'Ok' && data.routes && data.routes.length > 0) {
             const primary = data.routes[0];
+            const primaryCoords = this.cleanRouteSpurs(primary.geometry.coordinates.map(coord => [coord[1], coord[0]]));
             const primaryResult = {
-              distanceMeters: primary.distance,
+              distanceMeters: this.calculateCoordsDistance(primaryCoords) * 1000 || primary.distance,
               durationSeconds: primary.duration,
-              coords: primary.geometry.coordinates.map(coord => [coord[1], coord[0]]),
+              coords: primaryCoords,
               streetNames: this.extractStreetNames(primary.legs),
               alternatives: []
             };
@@ -376,10 +444,11 @@ export class RouteExplorerEngine {
             if (data.routes.length > 1) {
               for (let i = 1; i < data.routes.length; i++) {
                 const altRoute = data.routes[i];
+                const altCoords = this.cleanRouteSpurs(altRoute.geometry.coordinates.map(coord => [coord[1], coord[0]]));
                 primaryResult.alternatives.push({
-                  distanceMeters: altRoute.distance,
+                  distanceMeters: this.calculateCoordsDistance(altCoords) * 1000 || altRoute.distance,
                   durationSeconds: altRoute.duration,
-                  coords: altRoute.geometry.coordinates.map(coord => [coord[1], coord[0]]),
+                  coords: altCoords,
                   streetNames: this.extractStreetNames(altRoute.legs)
                 });
               }
@@ -421,13 +490,14 @@ export class RouteExplorerEngine {
       elevationProfile: this.generateEstimatedElevationProfile(totalDistanceKm, 160),
       elevationGainM: 160,
       elevationLossM: 155,
+      maxElevationM: 210,
       maxGradePercent: 4.8,
       avgGradePercent: 1.5
     };
 
     if (!coords || coords.length < 2) return defaultRes;
 
-    const sampleSize = Math.min(30, coords.length);
+    const sampleSize = Math.min(80, Math.max(30, coords.length));
     const sampledCoords = [];
     const stepIndex = (coords.length - 1) / (sampleSize - 1);
 
@@ -450,40 +520,62 @@ export class RouteExplorerEngine {
         const data = await res.json();
         if (data && data.elevation && data.elevation.length === sampledCoords.length) {
           const rawElevations = data.elevation;
+          
+          // Filtro a media mobile pesata per rimuovere il rumore di campionamento DEM
+          const smoothed = [];
+          for (let i = 0; i < rawElevations.length; i++) {
+            if (i === 0) {
+              smoothed.push((rawElevations[0] * 2 + rawElevations[1]) / 3);
+            } else if (i === rawElevations.length - 1) {
+              smoothed.push((rawElevations[i] * 2 + rawElevations[i - 1]) / 3);
+            } else {
+              smoothed.push((rawElevations[i - 1] + rawElevations[i] * 2 + rawElevations[i + 1]) / 4);
+            }
+          }
+
           let gainM = 0;
           let lossM = 0;
           let maxGrade = 0;
+          let maxElev = -9999;
           const profile = [];
 
           const distStep = totalDistanceKm / (sampledCoords.length - 1);
 
           for (let i = 0; i < sampledCoords.length; i++) {
-            const currentElev = Math.round(rawElevations[i]);
+            const currentElev = Math.round(smoothed[i]);
             const currentDistKm = parseFloat((i * distStep).toFixed(1));
+            if (currentElev > maxElev) maxElev = currentElev;
 
+            let segmentGrade = 0;
             if (i > 0) {
-              const prevElev = Math.round(rawElevations[i - 1]);
+              const prevElev = Math.round(smoothed[i - 1]);
               const diff = currentElev - prevElev;
-              if (diff > 0) gainM += diff;
-              else lossM += Math.abs(diff);
+              
+              if (diff >= 1.2) gainM += diff;
+              else if (diff <= -1.2) lossM += Math.abs(diff);
 
               const segmentDistMeters = distStep * 1000;
               if (segmentDistMeters > 0) {
-                const grade = (Math.abs(diff) / segmentDistMeters) * 100;
-                if (grade > maxGrade) maxGrade = parseFloat(grade.toFixed(1));
+                segmentGrade = parseFloat(((diff / segmentDistMeters) * 100).toFixed(1));
+                if (Math.abs(segmentGrade) > maxGrade) maxGrade = Math.abs(segmentGrade);
               }
             }
 
-            profile.push({ distanceKm: currentDistKm, elevationM: currentElev });
+            profile.push({
+              distanceKm: currentDistKm,
+              elevationM: currentElev,
+              slopeGrade: segmentGrade
+            });
           }
 
           const avgGrade = totalDistanceKm > 0 ? parseFloat((gainM / (totalDistanceKm * 10)).toFixed(1)) : 1.0;
 
           return {
             elevationProfile: profile,
-            elevationGainM: gainM || 140,
-            elevationLossM: lossM || 135,
-            maxGradePercent: Math.min(18, Math.max(1.5, maxGrade)),
+            elevationGainM: Math.round(gainM) || 140,
+            elevationLossM: Math.round(lossM) || 135,
+            maxElevationM: maxElev > -9000 ? maxElev : 210,
+            maxGradePercent: Math.min(22, Math.max(1.5, maxGrade)),
             avgGradePercent: avgGrade
           };
         }

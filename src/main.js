@@ -366,12 +366,26 @@ function initApp() {
       safetyBadge.innerHTML = `<i class="fa-solid ${safety.iconClass}"></i> ${safety.badgeText}`;
     }
 
-    document.getElementById('modalDifficultyBadge').textContent = route.difficulty;
-    document.getElementById('modalCategoryBadge').textContent = route.categoryTag || 'Itinerario Ciclistico';
+    const diffBadge = document.getElementById('modalDifficultyBadge');
+    if (diffBadge) {
+      diffBadge.className = 'badge badge-low-traffic';
+      diffBadge.textContent = route.difficulty;
+    }
+
+    const catBadge = document.getElementById('modalCategoryBadge');
+    if (catBadge) {
+      catBadge.className = 'badge badge-med-traffic';
+      catBadge.textContent = route.categoryTag || 'Itinerario Ciclistico';
+    }
 
     document.getElementById('modalDistVal').innerHTML = `${route.distanceKm} <span>km</span>`;
     document.getElementById('modalElevGainVal').innerHTML = `${route.elevationGainM} <span>m</span>`;
     document.getElementById('modalMaxGradeVal').textContent = `${route.maxGradePercent}%`;
+
+    const maxEleElem = document.getElementById('modalMaxEleVal');
+    if (maxEleElem) {
+      maxEleElem.innerHTML = `${route.maxElevationM || 180} <span>m</span>`;
+    }
 
     document.getElementById('modalSpeed20').textContent = route.timeEstimates.speed20;
     document.getElementById('modalSpeed25').textContent = route.timeEstimates.speed25;
@@ -382,7 +396,10 @@ function initApp() {
     routeDetailModal.classList.add('active');
 
     if (modalMultiMetricCanvas) {
-      analyticsManager.renderMultiMetricChart(modalMultiMetricCanvas, route.elevationProfile, route.color);
+      analyticsManager.renderPlannedRouteChart(modalMultiMetricCanvas, route.elevationProfile, route.color, (hoverIdx) => {
+        const coord = route.coords[Math.min(hoverIdx, route.coords.length - 1)];
+        if (coord) mapManager.updateHoverMarker(coord);
+      });
     }
   }
 
