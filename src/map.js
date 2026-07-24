@@ -19,33 +19,53 @@ export class MapManager {
       attributionControl: false
     }).setView([41.5956, 12.6525], 11);
 
-    const darkTileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    // Mappa Scura CARTO Rastertiles (URL ufficiale funzionante)
+    const darkTileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}{r}.png', {
       maxZoom: 19,
       subdomains: 'abcd',
       attribution: '&copy; OpenStreetMap &copy; CARTO'
     });
 
+    // Mappa Stradale OSM Standard (Massima affidabilità e leggibilità strade)
     const cycleTileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
-      attribution: '&copy; OpenStreetMap'
+      attribution: '&copy; OpenStreetMap contributors'
     });
 
+    // Mappa Ciclismo CyclOSM
+    const cyclOsmTileLayer = L.tileLayer('https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png', {
+      maxZoom: 18,
+      attribution: '&copy; OpenStreetMap &copy; CyclOSM'
+    });
+
+    // Fallback automatico se i tile scuri non rispondono o vengono bloccati
+    darkTileLayer.on('tileerror', () => {
+      console.warn("Tile Scura non disponibile, passaggio alla Mappa Stradale OpenStreetMap.");
+      if (this.map.hasLayer(darkTileLayer)) {
+        this.map.removeLayer(darkTileLayer);
+        cycleTileLayer.addTo(this.map);
+      }
+    });
+
+    // Aggiunge la mappa scura di default
     darkTileLayer.addTo(this.map);
 
     const baseMaps = {
       "Mappa Scura Pro": darkTileLayer,
-      "Mappa Stradale / OSM": cycleTileLayer
+      "Mappa Stradale / OSM": cycleTileLayer,
+      "Mappa Ciclismo / CyclOSM": cyclOsmTileLayer
     };
     L.control.layers(baseMaps, null, { position: 'topright' }).addTo(this.map);
 
-    // Risoluzione problemi di rendering Leaflet se il container viene calcolato in ritardo
-    setTimeout(() => {
+    // Risoluzione rapida dimensioni rendering Leaflet
+    const fixMapSize = () => {
       if (this.map) this.map.invalidateSize();
-    }, 200);
+    };
+    setTimeout(fixMapSize, 100);
+    setTimeout(fixMapSize, 400);
+    setTimeout(fixMapSize, 1000);
 
-    window.addEventListener('resize', () => {
-      if (this.map) this.map.invalidateSize();
-    });
+    window.addEventListener('resize', fixMapSize);
   }
 
   refreshMapSize() {
@@ -167,11 +187,11 @@ export class MapManager {
   }
 
   getSlopeColor(grade) {
-    if (grade < 3) return '#10b981';      // Verde Menta (<3%)
-    if (grade < 6) return '#f59e0b';      // Giallo (3-6%)
-    if (grade < 9) return '#f97316';      // Arancio (6-9%)
-    if (grade < 12) return '#ef4444';     // Rosso (9-12%)
-    return '#9f1239';                     // Viola / Borgogna (>12%)
+    if (grade < 3) return '#10b981';      // Emerald Mint (<3%)
+    if (grade < 6) return '#38bdf8';      // Soft Sky Azure (3-6%)
+    if (grade < 9) return '#a855f7';      // Lavender Indigo (6-9%)
+    if (grade < 12) return '#f43f5e';     // Soft Crimson Rose (9-12%)
+    return '#881337';                     // Deep Burgundy (>12%)
   }
 
   fitBoundsToRoutes() {
@@ -184,7 +204,7 @@ export class MapManager {
     if (!this.hoverMarker) {
       const hoverIcon = L.divIcon({
         className: 'hover-point-icon',
-        html: `<div style="background: #fc5200; width: 14px; height: 14px; border-radius: 50%; border: 2.5px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.5);"></div>`,
+        html: `<div style="background: #0ea5e9; width: 14px; height: 14px; border-radius: 50%; border: 2.5px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.5);"></div>`,
         iconSize: [14, 14],
         iconAnchor: [7, 7]
       });

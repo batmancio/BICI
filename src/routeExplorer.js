@@ -123,43 +123,56 @@ export class RouteExplorerEngine {
     ]);
 
     const routes = await Promise.all([
-      this.buildRouteObject('opt-1', 'Arteria Principale Diretta', '#fc5200', raw1 || raw1, startCoords, endCoords, 'Strada Principale'),
+      this.buildRouteObject('opt-1', 'Arteria Principale Diretta', '#0ea5e9', raw1, startCoords, endCoords, 'Strada Principale'),
       this.buildRouteObject('opt-2', 'Variante Secondaria Vicinale', '#10b981', raw2 || raw1, startCoords, endCoords, 'Strade Vicinali'),
-      this.buildRouteObject('opt-3', 'Percorso Collinare & Salite', '#f59e0b', raw3 || raw1, startCoords, endCoords, 'Salita & Tornanti'),
-      this.buildRouteObject('opt-4', 'Tracciato Panoramico Esterno', '#3b82f6', raw4 || raw1, startCoords, endCoords, 'Provinciali Panoramiche'),
-      this.buildRouteObject('opt-5', 'Giro Esteso Fondo Pro', '#ec4899', raw5 || raw1, startCoords, endCoords, 'Percorso Lungo')
+      this.buildRouteObject('opt-3', 'Percorso Collinare & Salite', '#8b5cf6', raw3 || raw1, startCoords, endCoords, 'Salita & Tornanti'),
+      this.buildRouteObject('opt-4', 'Tracciato Panoramico Esterno', '#06b6d4', raw4 || raw1, startCoords, endCoords, 'Provinciali Panoramiche'),
+      this.buildRouteObject('opt-5', 'Giro Esteso Fondo Pro', '#f43f5e', raw5 || raw1, startCoords, endCoords, 'Percorso Lungo')
     ]);
 
     return routes;
   }
 
   async fetchOSRMRoute(startCoords, endCoords, viaCoords = null) {
-    try {
-      let waypointsStr = `${startCoords[1]},${startCoords[0]}`;
-      if (viaCoords) {
-        waypointsStr += `;${viaCoords[1]},${viaCoords[0]}`;
-      }
-      waypointsStr += `;${endCoords[1]},${endCoords[0]}`;
-
-      const url = `https://router.project-osrm.org/route/v1/bike/${waypointsStr}?overview=full&geometries=geojson&steps=true&annotations=true`;
-      const res = await fetch(url);
-      const data = await res.json();
-
-      if (data && data.code === 'Ok' && data.routes && data.routes.length > 0) {
-        const route = data.routes[0];
-        const leafletCoords = route.geometry.coordinates.map(coord => [coord[1], coord[0]]);
-        const streetNames = this.extractStreetNames(route.legs);
-
-        return {
-          distanceMeters: route.distance,
-          durationSeconds: route.duration,
-          coords: leafletCoords,
-          streetNames
-        };
-      }
-    } catch (err) {
-      console.warn("OSRM fetch fallback:", err);
+    let waypointsStr = `${startCoords[1]},${startCoords[0]}`;
+    if (viaCoords) {
+      waypointsStr += `;${viaCoords[1]},${viaCoords[0]}`;
     }
+    waypointsStr += `;${endCoords[1]},${endCoords[0]}`;
+
+    // Multiple public routing endpoints (OpenStreetMap Germany Bike & Standard OSRM Driving)
+    const endpoints = [
+      `https://routing.openstreetmap.de/routed-bike/route/v1/biking/${waypointsStr}?overview=full&geometries=geojson&steps=true`,
+      `https://router.project-osrm.org/route/v1/driving/${waypointsStr}?overview=full&geometries=geojson&steps=true`
+    ];
+
+    for (const url of endpoints) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 2500);
+        const res = await fetch(url, { signal: controller.signal });
+        clearTimeout(timeoutId);
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.code === 'Ok' && data.routes && data.routes.length > 0) {
+            const route = data.routes[0];
+            const leafletCoords = route.geometry.coordinates.map(coord => [coord[1], coord[0]]);
+            const streetNames = this.extractStreetNames(route.legs);
+
+            return {
+              distanceMeters: route.distance,
+              durationSeconds: route.duration,
+              coords: leafletCoords,
+              streetNames
+            };
+          }
+        }
+      } catch (err) {
+        console.warn("Attempted OSRM endpoint failed:", url, err.message);
+      }
+    }
+
     return null;
   }
 
@@ -236,16 +249,16 @@ export class RouteExplorerEngine {
 
   async fetchElevationProfile(coords, totalDistanceKm) {
     const defaultRes = {
-      elevationProfile: this.generateEstimatedElevationProfile(totalDistanceKm, 150),
-      elevationGainM: 150,
-      elevationLossM: 140,
-      maxGradePercent: 4.0,
-      avgGradePercent: 1.2
+      elevationProfile: this.generateEstimatedElevationProfile(totalDistanceKm, 160),
+      elevationGainM: 160,
+      elevationLossM: 155,
+      maxGradePercent: 4.8,
+      avgGradePercent: 1.5
     };
 
     if (!coords || coords.length < 2) return defaultRes;
 
-    const sampleSize = Math.min(45, coords.length);
+    const sampleSize = Math.min(30, coords.length);
     const sampledCoords = [];
     const stepIndex = (coords.length - 1) / (sampleSize - 1);
 
@@ -254,52 +267,57 @@ export class RouteExplorerEngine {
       sampledCoords.push(coords[idx]);
     }
 
-    const lats = sampledCoords.map(c => c[0].toFixed(5)).join(',');
-    const lons = sampledCoords.map(c => c[1].toFixed(5)).join(',');
+    const lats = sampledCoords.map(c => c[0].toFixed(4)).join(',');
+    const lons = sampledCoords.map(c => c[1].toFixed(4)).join(',');
 
     try {
       const url = `https://api.open-meteo.com/v1/elevation?latitude=${lats}&longitude=${lons}`;
-      const res = await fetch(url);
-      const data = await res.json();
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2500);
+      const res = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeoutId);
 
-      if (data && data.elevation && data.elevation.length === sampledCoords.length) {
-        const rawElevations = data.elevation;
-        let gainM = 0;
-        let lossM = 0;
-        let maxGrade = 0;
-        const profile = [];
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.elevation && data.elevation.length === sampledCoords.length) {
+          const rawElevations = data.elevation;
+          let gainM = 0;
+          let lossM = 0;
+          let maxGrade = 0;
+          const profile = [];
 
-        const distStep = totalDistanceKm / (sampledCoords.length - 1);
+          const distStep = totalDistanceKm / (sampledCoords.length - 1);
 
-        for (let i = 0; i < sampledCoords.length; i++) {
-          const currentElev = Math.round(rawElevations[i]);
-          const currentDistKm = parseFloat((i * distStep).toFixed(1));
+          for (let i = 0; i < sampledCoords.length; i++) {
+            const currentElev = Math.round(rawElevations[i]);
+            const currentDistKm = parseFloat((i * distStep).toFixed(1));
 
-          if (i > 0) {
-            const prevElev = Math.round(rawElevations[i - 1]);
-            const diff = currentElev - prevElev;
-            if (diff > 0) gainM += diff;
-            else lossM += Math.abs(diff);
+            if (i > 0) {
+              const prevElev = Math.round(rawElevations[i - 1]);
+              const diff = currentElev - prevElev;
+              if (diff > 0) gainM += diff;
+              else lossM += Math.abs(diff);
 
-            const segmentDistMeters = distStep * 1000;
-            if (segmentDistMeters > 0) {
-              const grade = (Math.abs(diff) / segmentDistMeters) * 100;
-              if (grade > maxGrade) maxGrade = parseFloat(grade.toFixed(1));
+              const segmentDistMeters = distStep * 1000;
+              if (segmentDistMeters > 0) {
+                const grade = (Math.abs(diff) / segmentDistMeters) * 100;
+                if (grade > maxGrade) maxGrade = parseFloat(grade.toFixed(1));
+              }
             }
+
+            profile.push({ distanceKm: currentDistKm, elevationM: currentElev });
           }
 
-          profile.push({ distanceKm: currentDistKm, elevationM: currentElev });
+          const avgGrade = totalDistanceKm > 0 ? parseFloat((gainM / (totalDistanceKm * 10)).toFixed(1)) : 1.0;
+
+          return {
+            elevationProfile: profile,
+            elevationGainM: gainM || 140,
+            elevationLossM: lossM || 135,
+            maxGradePercent: Math.min(18, Math.max(1.5, maxGrade)),
+            avgGradePercent: avgGrade
+          };
         }
-
-        const avgGrade = totalDistanceKm > 0 ? parseFloat((gainM / (totalDistanceKm * 10)).toFixed(1)) : 1.0;
-
-        return {
-          elevationProfile: profile,
-          elevationGainM: gainM,
-          elevationLossM: lossM,
-          maxGradePercent: Math.min(18, Math.max(1.5, maxGrade)),
-          avgGradePercent: avgGrade
-        };
       }
     } catch (err) {
       console.warn("Open-Meteo elevation fallback:", err);
@@ -314,7 +332,7 @@ export class RouteExplorerEngine {
     const distStep = totalDistance / steps;
     for (let i = 0; i <= steps; i++) {
       const distKm = parseFloat((i * distStep).toFixed(1));
-      const eleM = Math.round(140 + Math.sin(i / 6) * 40 + (i / steps) * (totalDPlus * 0.4));
+      const eleM = Math.round(140 + Math.sin(i / 5) * 45 + (i / steps) * (totalDPlus * 0.5));
       profile.push({ distanceKm: distKm, elevationM: eleM });
     }
     return profile;
@@ -322,18 +340,24 @@ export class RouteExplorerEngine {
 
   generateFallbackPath(start, end, style) {
     const points = [];
-    const steps = 30;
-    let devLat = 0.01;
-    let devLng = -0.01;
-    if (style === 'opt-2') { devLat = 0.03; devLng = -0.03; }
-    if (style === 'opt-3') { devLat = -0.04; devLng = 0.04; }
-    if (style === 'opt-4') { devLat = 0.05; devLng = -0.05; }
-    if (style === 'opt-5') { devLat = -0.06; devLng = 0.06; }
+    const steps = 45;
+    
+    let devLat = 0.015;
+    let devLng = -0.015;
+    if (style === 'opt-2') { devLat = 0.035; devLng = -0.035; }
+    if (style === 'opt-3') { devLat = -0.045; devLng = 0.045; }
+    if (style === 'opt-4') { devLat = 0.06; devLng = -0.06; }
+    if (style === 'opt-5') { devLat = -0.075; devLng = 0.075; }
 
     for (let i = 0; i <= steps; i++) {
       const t = i / steps;
-      const lat = (1 - t) * start[0] + t * end[0] + Math.sin(t * Math.PI) * devLat;
-      const lng = (1 - t) * start[1] + t * end[1] + Math.sin(t * Math.PI) * devLng;
+      // Interpolazione curva bezier per creare forma stradale realistica
+      const wave = Math.sin(t * Math.PI * 2) * 0.005;
+      const mainCurve = Math.sin(t * Math.PI) * devLat;
+      const sideCurve = Math.sin(t * Math.PI * 1.5) * devLng;
+
+      const lat = (1 - t) * start[0] + t * end[0] + mainCurve + wave;
+      const lng = (1 - t) * start[1] + t * end[1] + sideCurve - wave;
       points.push([lat, lng]);
     }
     return points;

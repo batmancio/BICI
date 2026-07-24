@@ -151,37 +151,50 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   const handleCalculateRoutes = async () => {
-    const startVal = inputStart.value.trim() || 'Aprilia';
-    const endVal = inputEnd.value.trim() || 'Albano Laziale';
-    const targetKm = parseInt(sliderTargetKm?.value || '45', 10);
+    try {
+      const startVal = inputStart.value.trim() || 'Aprilia';
+      const endVal = inputEnd.value.trim() || 'Albano Laziale';
+      const targetKm = parseInt(sliderTargetKm?.value || '45', 10);
 
-    routeCardsContainer.innerHTML = `
-      <div style="text-align: center; padding: 36px 16px; color: var(--text-muted);">
-        <i class="fa-solid fa-spinner fa-spin" style="font-size: 1.8rem; color: var(--brand-orange); margin-bottom: 12px;"></i>
-        <div style="font-weight: 600; color: white; margin-bottom: 4px;">Calcolo 5 opzioni stradali...</div>
-        <div style="font-size: 0.78rem;">Elaborazione arterie OSRM & profilatura altimetrica</div>
-      </div>
-    `;
+      routeCardsContainer.innerHTML = `
+        <div style="text-align: center; padding: 36px 16px; color: var(--text-muted);">
+          <i class="fa-solid fa-spinner fa-spin" style="font-size: 1.8rem; color: var(--brand-orange); margin-bottom: 12px;"></i>
+          <div style="font-weight: 600; color: white; margin-bottom: 4px;">Calcolo 5 opzioni stradali...</div>
+          <div style="font-size: 0.78rem;">Elaborazione arterie OSRM & profilatura altimetrica</div>
+        </div>
+      `;
 
-    activeRoutes = await explorerEngine.discoverRoutes(startVal, endVal, targetKm);
-    renderTechnicalSpecCards(activeRoutes);
+      activeRoutes = await explorerEngine.discoverRoutes(startVal, endVal, targetKm);
+      renderTechnicalSpecCards(activeRoutes);
 
-    mapManager.clearRoutes();
+      mapManager.clearRoutes();
 
-    const firstRoute = activeRoutes[0];
-    const startCoords = firstRoute?.startCoords || [41.5956, 12.6525];
-    const endCoords = firstRoute?.endCoords || [41.7288, 12.6582];
+      const firstRoute = activeRoutes[0];
+      const startCoords = firstRoute?.startCoords || [41.5956, 12.6525];
+      const endCoords = firstRoute?.endCoords || [41.7288, 12.6582];
 
-    mapManager.addStartEndMarkers(startCoords, endCoords);
+      mapManager.addStartEndMarkers(startCoords, endCoords);
 
-    activeRoutes.forEach(route => {
-      mapManager.renderRoutePolyline(route.coords, route.color, false, route.id);
-    });
+      activeRoutes.forEach(route => {
+        mapManager.renderRoutePolyline(route.coords, route.color, false, route.id);
+      });
 
-    mapManager.fitBoundsToRoutes();
+      mapManager.fitBoundsToRoutes();
 
-    if (activeRoutes.length > 0) {
-      selectRoute(activeRoutes[0].id);
+      if (activeRoutes.length > 0) {
+        selectRoute(activeRoutes[0].id);
+      }
+
+      mapManager.refreshMapSize();
+    } catch (err) {
+      console.error("Errore calcolo percorsi:", err);
+      routeCardsContainer.innerHTML = `
+        <div style="padding: 20px; text-align: center; color: #ef4444; background: rgba(239,68,68,0.1); border-radius: 8px; border: 1px solid rgba(239,68,68,0.3);">
+          <i class="fa-solid fa-triangle-exclamation" style="font-size: 1.6rem; margin-bottom: 8px;"></i>
+          <div style="font-weight: 700; font-size: 0.9rem;">Impossibile completare il calcolo</div>
+          <div style="font-size: 0.78rem; margin-top: 4px; color: var(--text-muted);">Verifica la connessione o inserisci due località valide.</div>
+        </div>
+      `;
     }
   };
 
@@ -328,10 +341,10 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('resEffort').textContent = metrics.effortRating;
 
       mapManager.clearRoutes();
-      mapManager.renderRoutePolyline(metrics.coords, '#fc5200', true, 'user-workout');
+      mapManager.renderRoutePolyline(metrics.coords, '#0ea5e9', true, 'user-workout');
       mapManager.fitBoundsToRoutes();
 
-      analyticsManager.renderElevationChart(elevationCanvas, metrics.elevationProfile, '#fc5200');
+      analyticsManager.renderElevationChart(elevationCanvas, metrics.elevationProfile, '#0ea5e9');
 
       document.querySelector('.nav-btn[data-tab="analysis"]').click();
 
