@@ -83,6 +83,9 @@ export class AnalyticsManager {
           }
         }
       }
+    });
+  }
+
   renderMultiMetricChart(containerCanvas, profileData, routeColor = '#0ea5e9', workoutData = null) {
     if (!containerCanvas) return;
 

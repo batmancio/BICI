@@ -34,7 +34,7 @@ export class RouteExplorerEngine {
 
     // 2. Geocoder Komoot Photon (ottimizzato per strade, numeri civici e punti di interesse ciclismo)
     try {
-      const photonUrl = `https://photon.komoot.io/api/?q=${encodeURIComponent(clean)}&limit=6&lang=it`;
+      const photonUrl = `https://photon.komoot.io/api/?q=${encodeURIComponent(clean)}&limit=6`;
       const controller = new AbortController();
       const tid = setTimeout(() => controller.abort(), 1200);
       const res = await fetch(photonUrl, { signal: controller.signal });
@@ -124,7 +124,7 @@ export class RouteExplorerEngine {
 
     // 2. Query Komoot Photon (Ricerca vie, numeri civici, piazze con priorità)
     try {
-      const photonUrl = `https://photon.komoot.io/api/?q=${encodeURIComponent(cleanQuery)}&limit=1&lang=it`;
+      const photonUrl = `https://photon.komoot.io/api/?q=${encodeURIComponent(cleanQuery)}&limit=1`;
       const controller = new AbortController();
       const tid = setTimeout(() => controller.abort(), 2000);
       const res = await fetch(photonUrl, { signal: controller.signal });

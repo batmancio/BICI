@@ -467,7 +467,7 @@
       const localMatches = getInstantCitySuggestions(clean);
 
       try {
-        const photonUrl = `https://photon.komoot.io/api/?q=${encodeURIComponent(clean)}&limit=6&lang=it`;
+        const photonUrl = `https://photon.komoot.io/api/?q=${encodeURIComponent(clean)}&limit=6`;
         const controller = new AbortController();
         const tid = setTimeout(() => controller.abort(), 1200);
         const res = await fetch(photonUrl, { signal: controller.signal });
@@ -552,7 +552,7 @@
 
       // 2. Query Komoot Photon (Ricerca vie, numeri civici, piazze con priorità)
       try {
-        const photonUrl = `https://photon.komoot.io/api/?q=${encodeURIComponent(cleanQuery)}&limit=1&lang=it`;
+        const photonUrl = `https://photon.komoot.io/api/?q=${encodeURIComponent(cleanQuery)}&limit=1`;
         const controller = new AbortController();
         const tid = setTimeout(() => controller.abort(), 2000);
         const res = await fetch(photonUrl, { signal: controller.signal });
@@ -685,6 +685,84 @@
         badgeClass: 'badge-low-traffic',
         iconClass: 'fa-shield-halved'
       };
+    }
+
+    async fetchOSRMRoute(startCoords, endCoords, viaCoordsList = null, requestAlternatives = false) {
+      let waypoints = [startCoords];
+      if (Array.isArray(viaCoordsList)) {
+        waypoints.push(...viaCoordsList);
+      }
+      waypoints.push(endCoords);
+
+      const waypointsStr = waypoints.map(pt => `${pt[1]},${pt[0]}`).join(';');
+      const altParam = requestAlternatives ? '&alternatives=3' : '';
+
+      const endpoints = [
+        `https://routing.openstreetmap.de/routed-bike/route/v1/biking/${waypointsStr}?overview=full&geometries=geojson&steps=true${altParam}`,
+        `https://router.project-osrm.org/route/v1/driving/${waypointsStr}?overview=full&geometries=geojson&steps=true${altParam}`,
+        `https://routing.openstreetmap.de/routed-car/route/v1/driving/${waypointsStr}?overview=full&geometries=geojson&steps=true${altParam}`
+      ];
+
+      for (const url of endpoints) {
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 3000);
+          const res = await fetch(url, { signal: controller.signal });
+          clearTimeout(timeoutId);
+
+          if (res.ok) {
+            const data = await res.json();
+            if (data && data.code === 'Ok' && data.routes && data.routes.length > 0) {
+              const primary = data.routes[0];
+              const primaryResult = {
+                distanceMeters: primary.distance,
+                durationSeconds: primary.duration,
+                coords: primary.geometry.coordinates.map(coord => [coord[1], coord[0]]),
+                streetNames: this.extractStreetNames(primary.legs),
+                alternatives: []
+              };
+
+              if (data.routes.length > 1) {
+                for (let i = 1; i < data.routes.length; i++) {
+                  const altRoute = data.routes[i];
+                  primaryResult.alternatives.push({
+                    distanceMeters: altRoute.distance,
+                    durationSeconds: altRoute.duration,
+                    coords: altRoute.geometry.coordinates.map(coord => [coord[1], coord[0]]),
+                    streetNames: this.extractStreetNames(altRoute.legs)
+                  });
+                }
+              }
+
+              return primaryResult;
+            }
+          }
+        } catch (err) {
+          console.warn("Attempted OSRM endpoint failed:", url, err.message);
+        }
+      }
+
+      return null;
+    }
+
+    extractStreetNames(legs) {
+      if (!legs) return [];
+      const names = new Set();
+
+      legs.forEach(leg => {
+        if (leg.steps) {
+          leg.steps.forEach(step => {
+            if (step.name && step.name.trim() !== '' && !step.name.includes('{') && step.name.length > 2) {
+              names.add(step.name.trim());
+            }
+            if (step.ref && step.ref.trim() !== '') {
+              names.add(step.ref.trim());
+            }
+          });
+        }
+      });
+
+      return Array.from(names);
     }
 
     async buildRouteObject(id, name, color, rawOsrm, startCoords, endCoords, categoryTag, routeMode = 'oneway') {
@@ -972,11 +1050,12 @@
           plugins: { legend: { display: false } },
           scales: {
             x: { grid: { color: 'rgba(255, 255, 255, 0.04)' }, ticks: { color: '#8696a0', font: { size: 10 } } },
-          y: { grid: { color: 'rgba(255, 255, 255, 0.04)' }, ticks: { color: '#8696a0', font: { size: 10 } } }
-        },
-        onHover: (event, activeElements) => {
-          if (activeElements.length > 0 && onPointHover) {
-            onPointHover(activeElements[0].index);
+            y: { grid: { color: 'rgba(255, 255, 255, 0.04)' }, ticks: { color: '#8696a0', font: { size: 10 } } }
+          },
+          onHover: (event, activeElements) => {
+            if (activeElements.length > 0 && onPointHover) {
+              onPointHover(activeElements[0].index);
+            }
           }
         }
       });
