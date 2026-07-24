@@ -8,8 +8,9 @@
   <!-- FontAwesome Icons & Google Fonts -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   
-  <!-- Leaflet CSS -->
+  <!-- Leaflet CSS with fallback -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" />
   
   <!-- App Stylesheet -->
   <link rel="stylesheet" href="./styles/main.css">
@@ -269,8 +270,13 @@
 
   </main>
 
-  <!-- Leaflet JS -->
+  <!-- Leaflet JS (with jsDelivr fallback) -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    if (typeof L === 'undefined') {
+      document.write('<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"><\/script>');
+    }
+  </script>
   
   <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -278,8 +284,9 @@
   <!-- FIT Parser (Client-side) -->
   <script src="https://cdn.jsdelivr.net/npm/fit-file-parser@1.9.0/dist/fit-parser.min.js"></script>
 
-  <!-- App JavaScript Bundle -->
-  <script src="./src/app.bundle.js"></script>
+  <!-- App JavaScript (Module & Standalone Fallback) -->
+  <script type="module" src="./src/main.js"></script>
+  <script nomodule src="./src/app.bundle.js"></script>
 
   <!-- ==========================================================================
        MODAL FINESTRA DETTAGLIATA PERCORSO

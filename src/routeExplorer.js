@@ -16,10 +16,17 @@ export class RouteExplorerEngine {
    * Cerca suggerimenti indirizzo/città istantanei (da 1 carattere in su)
    */
   /**
+   * Restituisce immediatamente i suggerimenti locali dalla lista città (0ms sync)
+   */
+  getInstantSuggestions(query) {
+    return getInstantCitySuggestions(query);
+  }
+
+  /**
    * Cerca suggerimenti per indirizzi, vie, piazze o città (Komoot Photon + Nominatim + Local)
    */
   async searchAddressSuggestions(query) {
-    if (!query || query.trim().length < 2) return [];
+    if (!query || query.trim().length < 1) return [];
     const clean = query.trim();
 
     // 1. Suggerimenti istantanei locali
@@ -29,7 +36,7 @@ export class RouteExplorerEngine {
     try {
       const photonUrl = `https://photon.komoot.io/api/?q=${encodeURIComponent(clean)}&limit=6&lang=it`;
       const controller = new AbortController();
-      const tid = setTimeout(() => controller.abort(), 2000);
+      const tid = setTimeout(() => controller.abort(), 1200);
       const res = await fetch(photonUrl, { signal: controller.signal });
       clearTimeout(tid);
 
@@ -55,10 +62,10 @@ export class RouteExplorerEngine {
           };
         });
 
-        // Unisci local + photon senza duplicati
+        // Unisci local + photon con priorità ai match locali esatti/iniziali
         const resultMap = new Map();
-        photonSuggestions.forEach(item => resultMap.set(item.displayName.toLowerCase(), item));
-        localMatches.forEach(item => {
+        localMatches.forEach(item => resultMap.set(item.displayName.toLowerCase(), item));
+        photonSuggestions.forEach(item => {
           const k = item.displayName.toLowerCase();
           if (!resultMap.has(k)) resultMap.set(k, item);
         });
@@ -66,29 +73,37 @@ export class RouteExplorerEngine {
         return Array.from(resultMap.values()).slice(0, 8);
       }
     } catch (err) {
-      console.warn("Photon autocomplete fallback:", err);
+      // Fallback in caso di timeout o errore di rete
     }
 
     // 3. Fallback Nominatim
     try {
       const nomUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(clean)}&addressdetails=1&limit=5&countrycodes=it`;
       const controller = new AbortController();
-      const tid = setTimeout(() => controller.abort(), 2000);
+      const tid = setTimeout(() => controller.abort(), 1200);
       const res = await fetch(nomUrl, { headers: { 'Accept-Language': 'it,en' }, signal: controller.signal });
       clearTimeout(tid);
 
       if (res.ok) {
         const data = await res.json();
-        return (data || []).map(item => ({
+        const nomSuggestions = (data || []).map(item => ({
           displayName: item.display_name.split(',').slice(0, 3).join(','),
           cityName: item.display_name.split(',')[0],
           lat: parseFloat(item.lat),
           lon: parseFloat(item.lon),
           isStreet: item.type === 'highway' || item.class === 'highway'
         }));
+
+        const resultMap = new Map();
+        localMatches.forEach(item => resultMap.set(item.displayName.toLowerCase(), item));
+        nomSuggestions.forEach(item => {
+          const k = item.displayName.toLowerCase();
+          if (!resultMap.has(k)) resultMap.set(k, item);
+        });
+        return Array.from(resultMap.values()).slice(0, 8);
       }
     } catch (err) {
-      console.warn("Nominatim autocomplete fallback:", err);
+      // Fallback
     }
 
     return localMatches;
@@ -399,57 +414,6 @@ export class RouteExplorerEngine {
     });
 
     return Array.from(names);
-  }
-
-  async buildRouteObject(id, name, color, rawOsrm, startCoords, endCoords, categoryTag) {
-    let coords = [];
-    let distanceKm = 0;
-    let streetSummary = "Strade provinciali e vicinali";
-
-    if (rawOsrm && rawOsrm.coords && rawOsrm.coords.length > 1) {
-      coords = rawOsrm.coords;
-      distanceKm = parseFloat((rawOsrm.distanceMeters / 1000).toFixed(1));
-      
-      if (rawOsrm.streetNames && rawOsrm.streetNames.length > 0) {
-        streetSummary = rawOsrm.streetNames.slice(0, 4).join(' → ');
-      }
-    } else {
-      coords = this.generateFallbackPath(startCoords, endCoords, id);
-      distanceKm = parseFloat((this.calculateHaversineDistance(startCoords, endCoords) * 1.3).toFixed(1));
-    }
-
-    const { elevationProfile, elevationGainM, elevationLossM, maxGradePercent, avgGradePercent } =
-      await this.fetchElevationProfile(coords, distanceKm);
-
-    const speed20 = this.formatDuration(distanceKm / 20);
-    const speed25 = this.formatDuration(distanceKm / 25);
-    const speed30 = this.formatDuration(distanceKm / 30);
-
-    let difficulty = 'Pianeggiante';
-    if (elevationGainM > 550 || maxGradePercent > 8.0) {
-      difficulty = 'Impegnativo / Salita';
-    } else if (elevationGainM > 220 || maxGradePercent > 4.5) {
-      difficulty = 'Ondulato / Collinare';
-    }
-
-    return {
-      id,
-      name,
-      color,
-      categoryTag,
-      streetSummary,
-      distanceKm,
-      elevationGainM,
-      elevationLossM,
-      maxGradePercent,
-      avgGradePercent,
-      difficulty,
-      timeEstimates: { speed20, speed25, speed30 },
-      coords,
-      elevationProfile,
-      startCoords,
-      endCoords
-    };
   }
 
   async fetchElevationProfile(coords, totalDistanceKm) {

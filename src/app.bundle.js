@@ -184,7 +184,8 @@
       displayName: `${c.name} (${c.region})`,
       cityName: c.name,
       lat: c.lat,
-      lon: c.lon
+      lon: c.lon,
+      isStreet: false
     }));
   }
 
@@ -440,17 +441,20 @@
       });
     }
 
+    getInstantSuggestions(query) {
+      return getInstantCitySuggestions(query);
+    }
+
     async searchAddressSuggestions(query) {
-      if (!query || query.trim().length < 2) return [];
+      if (!query || query.trim().length < 1) return [];
       const clean = query.trim();
 
       const localMatches = getInstantCitySuggestions(clean);
 
-      // Geocoder Komoot Photon (ottimizzato per strade, numeri civici e punti di interesse ciclismo)
       try {
         const photonUrl = `https://photon.komoot.io/api/?q=${encodeURIComponent(clean)}&limit=6&lang=it`;
         const controller = new AbortController();
-        const tid = setTimeout(() => controller.abort(), 2000);
+        const tid = setTimeout(() => controller.abort(), 1200);
         const res = await fetch(photonUrl, { signal: controller.signal });
         clearTimeout(tid);
 
@@ -477,8 +481,8 @@
           });
 
           const resultMap = new Map();
-          photonSuggestions.forEach(item => resultMap.set(item.displayName.toLowerCase(), item));
-          localMatches.forEach(item => {
+          localMatches.forEach(item => resultMap.set(item.displayName.toLowerCase(), item));
+          photonSuggestions.forEach(item => {
             const k = item.displayName.toLowerCase();
             if (!resultMap.has(k)) resultMap.set(k, item);
           });
@@ -486,29 +490,36 @@
           return Array.from(resultMap.values()).slice(0, 8);
         }
       } catch (err) {
-        console.warn("Photon autocomplete fallback:", err);
+        // Fallback
       }
 
-      // Fallback Nominatim
       try {
         const nomUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(clean)}&addressdetails=1&limit=5&countrycodes=it`;
         const controller = new AbortController();
-        const tid = setTimeout(() => controller.abort(), 2000);
+        const tid = setTimeout(() => controller.abort(), 1200);
         const res = await fetch(nomUrl, { headers: { 'Accept-Language': 'it,en' }, signal: controller.signal });
         clearTimeout(tid);
 
         if (res.ok) {
           const data = await res.json();
-          return (data || []).map(item => ({
+          const nomSuggestions = (data || []).map(item => ({
             displayName: item.display_name.split(',').slice(0, 3).join(','),
             cityName: item.display_name.split(',')[0],
             lat: parseFloat(item.lat),
             lon: parseFloat(item.lon),
             isStreet: item.type === 'highway' || item.class === 'highway'
           }));
+
+          const resultMap = new Map();
+          localMatches.forEach(item => resultMap.set(item.displayName.toLowerCase(), item));
+          nomSuggestions.forEach(item => {
+            const k = item.displayName.toLowerCase();
+            if (!resultMap.has(k)) resultMap.set(k, item);
+          });
+          return Array.from(resultMap.values()).slice(0, 8);
         }
       } catch (err) {
-        console.warn("Nominatim autocomplete fallback:", err);
+        // Fallback
       }
 
       return localMatches;
@@ -1068,50 +1079,71 @@
     if (inputEnd && endAutocomplete) setupAutocomplete(inputEnd, endAutocomplete);
 
     function setupAutocomplete(inputElem, dropdownElem) {
+      if (!inputElem || !dropdownElem) return;
       let timeout = null;
-      const renderSuggestions = async (val) => {
-        if (!val || val.trim().length < 2) {
+
+      const drawDropdown = (results, searchVal) => {
+        if (!results || results.length === 0) {
+          dropdownElem.style.display = 'none';
+          return;
+        }
+        dropdownElem.innerHTML = '';
+        const searchLower = searchVal.trim().toLowerCase();
+
+        results.forEach(res => {
+          const item = document.createElement('div');
+          item.className = 'autocomplete-item';
+          const text = res.displayName;
+          const matchIdx = text.toLowerCase().indexOf(searchLower);
+
+          let formattedHtml = text;
+          if (matchIdx !== -1) {
+            const before = text.substring(0, matchIdx);
+            const match = text.substring(matchIdx, matchIdx + searchLower.length);
+            const after = text.substring(matchIdx + searchLower.length);
+            formattedHtml = `${before}<span class="match-highlight">${match}</span>${after}`;
+          }
+
+          const iconClass = res.isStreet ? 'fa-road' : 'fa-location-dot';
+          item.innerHTML = `<i class="fa-solid ${iconClass}"></i> <span>${formattedHtml}</span>`;
+
+          item.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            inputElem.value = res.displayName;
+            inputElem.dataset.lat = res.lat;
+            inputElem.dataset.lng = res.lon;
+            dropdownElem.style.display = 'none';
+            handleCalculateRoutes();
+          });
+
+          dropdownElem.appendChild(item);
+        });
+
+        dropdownElem.style.display = 'block';
+      };
+
+      const updateSuggestions = async (val) => {
+        if (!val || val.trim().length < 1) {
           dropdownElem.style.display = 'none';
           return;
         }
 
-        const results = await explorerEngine.searchAddressSuggestions(val);
-        if (results.length > 0) {
-          dropdownElem.innerHTML = '';
-          const searchLower = val.trim().toLowerCase();
+        // 1. MOSTRA IMMEDIATAMENTE I SUGGERIMENTI LOCALI (0ms)
+        const instantLocal = explorerEngine.getInstantSuggestions(val);
+        if (instantLocal.length > 0) {
+          drawDropdown(instantLocal, val);
+        }
 
-          results.forEach(res => {
-            const item = document.createElement('div');
-            item.className = 'autocomplete-item';
-            const text = res.displayName;
-            const matchIdx = text.toLowerCase().indexOf(searchLower);
-
-            let formattedHtml = text;
-            if (matchIdx !== -1) {
-              const before = text.substring(0, matchIdx);
-              const match = text.substring(matchIdx, matchIdx + searchLower.length);
-              const after = text.substring(matchIdx + searchLower.length);
-              formattedHtml = `${before}<span class="match-highlight">${match}</span>${after}`;
+        // 2. ARRICCHIMENTO ONLINE IN BACKGROUND
+        try {
+          const fullResults = await explorerEngine.searchAddressSuggestions(val);
+          if (inputElem.value.trim().toLowerCase() === val.trim().toLowerCase()) {
+            if (fullResults && fullResults.length > 0) {
+              drawDropdown(fullResults, val);
             }
-
-            const iconClass = res.isStreet ? 'fa-road' : 'fa-location-dot';
-            item.innerHTML = `<i class="fa-solid ${iconClass}"></i> <span>${formattedHtml}</span>`;
-
-            item.addEventListener('mousedown', (e) => {
-              e.preventDefault();
-              inputElem.value = res.displayName;
-              inputElem.dataset.lat = res.lat;
-              inputElem.dataset.lng = res.lon;
-              dropdownElem.style.display = 'none';
-              handleCalculateRoutes();
-            });
-
-            dropdownElem.appendChild(item);
-          });
-
-          dropdownElem.style.display = 'block';
-        } else {
-          dropdownElem.style.display = 'none';
+          }
+        } catch (e) {
+          // Fallback
         }
       };
 
@@ -1120,16 +1152,22 @@
         delete inputElem.dataset.lng;
         clearTimeout(timeout);
         const val = e.target.value;
-        timeout = setTimeout(() => renderSuggestions(val), 100);
+        updateSuggestions(val);
       });
 
       inputElem.addEventListener('focus', (e) => {
         const val = e.target.value;
-        if (val && val.length >= 2) renderSuggestions(val);
+        if (val && val.trim().length >= 1) updateSuggestions(val);
       });
 
       inputElem.addEventListener('blur', () => {
-        setTimeout(() => { dropdownElem.style.display = 'none'; }, 200);
+        setTimeout(() => { dropdownElem.style.display = 'none'; }, 250);
+      });
+
+      document.addEventListener('click', (e) => {
+        if (!inputElem.contains(e.target) && !dropdownElem.contains(e.target)) {
+          dropdownElem.style.display = 'none';
+        }
       });
     }
 
@@ -1412,5 +1450,9 @@
     if (btnToggleChart && elevationPanel) {
       btnToggleChart.addEventListener('click', () => elevationPanel.classList.toggle('collapsed'));
     }
+
+    setTimeout(() => {
+      handleCalculateRoutes();
+    }, 100);
   });
 })();

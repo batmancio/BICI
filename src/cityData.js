@@ -185,6 +185,7 @@ export function getInstantCitySuggestions(query) {
     displayName: `${c.name} (${c.region})`,
     cityName: c.name,
     lat: c.lat,
-    lon: c.lon
+    lon: c.lon,
+    isStreet: false
   }));
 }

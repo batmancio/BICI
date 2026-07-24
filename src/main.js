@@ -72,58 +72,78 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Setup Autocomplete per Input Partenza & Arrivo (Scatta da 1 carattere e su focus)
+  // Setup Autocomplete per Input Partenza & Arrivo (Istantaneo da 1 carattere + Arricchimento online)
   setupAutocomplete(inputStart, startAutocomplete);
   setupAutocomplete(inputEnd, endAutocomplete);
 
   function setupAutocomplete(inputElem, dropdownElem) {
+    if (!inputElem || !dropdownElem) return;
     let timeout = null;
 
-    const renderSuggestions = async (val) => {
-      if (!val || val.trim().length < 2) {
+    const drawDropdown = (results, searchVal) => {
+      if (!results || results.length === 0) {
+        dropdownElem.style.display = 'none';
+        return;
+      }
+      dropdownElem.innerHTML = '';
+      const searchLower = searchVal.trim().toLowerCase();
+
+      results.forEach(res => {
+        const item = document.createElement('div');
+        item.className = 'autocomplete-item';
+
+        const text = res.displayName;
+        const lowerText = text.toLowerCase();
+        const matchIdx = lowerText.indexOf(searchLower);
+
+        let formattedHtml = text;
+        if (matchIdx !== -1) {
+          const before = text.substring(0, matchIdx);
+          const match = text.substring(matchIdx, matchIdx + searchLower.length);
+          const after = text.substring(matchIdx + searchLower.length);
+          formattedHtml = `${before}<span class="match-highlight">${match}</span>${after}`;
+        }
+
+        const iconClass = res.isStreet ? 'fa-road' : 'fa-location-dot';
+        item.innerHTML = `<i class="fa-solid ${iconClass}"></i> <span>${formattedHtml}</span>`;
+
+        item.addEventListener('mousedown', (e) => {
+          e.preventDefault();
+          inputElem.value = res.displayName;
+          inputElem.dataset.lat = res.lat;
+          inputElem.dataset.lng = res.lon;
+          dropdownElem.style.display = 'none';
+          handleCalculateRoutes();
+        });
+
+        dropdownElem.appendChild(item);
+      });
+
+      dropdownElem.style.display = 'block';
+    };
+
+    const updateSuggestions = async (val) => {
+      if (!val || val.trim().length < 1) {
         dropdownElem.style.display = 'none';
         return;
       }
 
-      const results = await explorerEngine.searchAddressSuggestions(val);
-      if (results.length > 0) {
-        dropdownElem.innerHTML = '';
-        const searchLower = val.trim().toLowerCase();
+      // 1. MOSTRA IMMEDIATAMENTE I SUGGERIMENTI LOCALI (0ms)
+      const instantLocal = explorerEngine.getInstantSuggestions(val);
+      if (instantLocal.length > 0) {
+        drawDropdown(instantLocal, val);
+      }
 
-        results.forEach(res => {
-          const item = document.createElement('div');
-          item.className = 'autocomplete-item';
-
-          const text = res.displayName;
-          const lowerText = text.toLowerCase();
-          const matchIdx = lowerText.indexOf(searchLower);
-
-          let formattedHtml = text;
-          if (matchIdx !== -1) {
-            const before = text.substring(0, matchIdx);
-            const match = text.substring(matchIdx, matchIdx + searchLower.length);
-            const after = text.substring(matchIdx + searchLower.length);
-            formattedHtml = `${before}<span class="match-highlight">${match}</span>${after}`;
+      // 2. ARRICCHIMENTO ONLINE IN BACKGROUND
+      try {
+        const fullResults = await explorerEngine.searchAddressSuggestions(val);
+        if (inputElem.value.trim().toLowerCase() === val.trim().toLowerCase()) {
+          if (fullResults && fullResults.length > 0) {
+            drawDropdown(fullResults, val);
           }
-
-          const iconClass = res.isStreet ? 'fa-road' : 'fa-location-dot';
-          item.innerHTML = `<i class="fa-solid ${iconClass}"></i> <span>${formattedHtml}</span>`;
-
-          item.addEventListener('mousedown', (e) => {
-            e.preventDefault();
-            inputElem.value = res.displayName;
-            inputElem.dataset.lat = res.lat;
-            inputElem.dataset.lng = res.lon;
-            dropdownElem.style.display = 'none';
-            handleCalculateRoutes();
-          });
-
-          dropdownElem.appendChild(item);
-        });
-
-        dropdownElem.style.display = 'block';
-      } else {
-        dropdownElem.style.display = 'none';
+        }
+      } catch (e) {
+        // Fallback silente: i dati locali sono già visibili
       }
     };
 
@@ -132,20 +152,20 @@ document.addEventListener('DOMContentLoaded', () => {
       delete inputElem.dataset.lng;
       clearTimeout(timeout);
       const val = e.target.value;
-      timeout = setTimeout(() => renderSuggestions(val), 100);
+      updateSuggestions(val);
     });
 
     inputElem.addEventListener('focus', (e) => {
       const val = e.target.value;
-      if (val && val.length >= 2) {
-        renderSuggestions(val);
+      if (val && val.trim().length >= 1) {
+        updateSuggestions(val);
       }
     });
 
     inputElem.addEventListener('blur', () => {
       setTimeout(() => {
         dropdownElem.style.display = 'none';
-      }, 200);
+      }, 250);
     });
 
     document.addEventListener('click', (e) => {
@@ -495,4 +515,9 @@ document.addEventListener('DOMContentLoaded', () => {
   btnToggleChart.addEventListener('click', () => {
     elevationPanel.classList.toggle('collapsed');
   });
+
+  // Calcolo iniziale automatico dei percorsi all'avvio dell'applicazione
+  setTimeout(() => {
+    handleCalculateRoutes();
+  }, 100);
 });
