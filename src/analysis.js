@@ -7,7 +7,7 @@ export class AnalyticsManager {
     this.chartInstance = null;
   }
 
-  renderElevationChart(containerCanvas, profileData, routeColor = '#0ea5e9', onPointHover = null) {
+  renderElevationChart(containerCanvas, profileData, routeColor = '#0066FF', onPointHover = null) {
     if (!containerCanvas) return;
 
     if (this.chartInstance) {
@@ -18,11 +18,11 @@ export class AnalyticsManager {
     const labels = profileData.map(p => `${p.distanceKm} km`);
     const elevations = profileData.map(p => p.elevationM);
 
-    const activeColor = routeColor || '#00a884';
+    const activeColor = routeColor || '#0066FF';
 
     const gradient = ctx.createLinearGradient(0, 0, 0, 160);
-    gradient.addColorStop(0, 'rgba(0, 168, 132, 0.25)');
-    gradient.addColorStop(1, 'rgba(17, 27, 33, 0.0)');
+    gradient.addColorStop(0, activeColor + '33');
+    gradient.addColorStop(1, activeColor + '00');
 
     this.chartInstance = new Chart(ctx, {
       type: 'line',
@@ -32,7 +32,7 @@ export class AnalyticsManager {
           label: 'Altimetria (metri)',
           data: elevations,
           borderColor: activeColor,
-          borderWidth: 2,
+          borderWidth: 2.5,
           backgroundColor: gradient,
           fill: true,
           tension: 0.3,
@@ -50,13 +50,16 @@ export class AnalyticsManager {
           mode: 'index',
           intersect: false
         },
+        layout: {
+          padding: { top: 4, bottom: 6, left: 6, right: 12 }
+        },
         plugins: {
           legend: { display: false },
           tooltip: {
-            backgroundColor: '#111b21',
-            titleColor: '#e9edef',
-            bodyColor: '#00a884',
-            borderColor: '#222d34',
+            backgroundColor: '#ffffff',
+            titleColor: '#1a1d20',
+            bodyColor: activeColor,
+            borderColor: '#e2e8f0',
             borderWidth: 1,
             padding: 10,
             displayColors: false,
@@ -68,12 +71,12 @@ export class AnalyticsManager {
         },
         scales: {
           x: {
-            grid: { color: 'rgba(255, 255, 255, 0.04)' },
-            ticks: { color: '#8696a0', font: { size: 10 } }
+            grid: { color: 'rgba(0, 0, 0, 0.05)' },
+            ticks: { color: '#64748b', font: { size: 9 }, maxTicksLimit: 10, maxRotation: 0, padding: 2 }
           },
           y: {
-            grid: { color: 'rgba(255, 255, 255, 0.04)' },
-            ticks: { color: '#8696a0', font: { size: 10 } }
+            grid: { color: 'rgba(0, 0, 0, 0.05)' },
+            ticks: { color: '#64748b', font: { size: 9 } }
           }
         },
         onHover: (event, activeElements) => {
@@ -86,7 +89,7 @@ export class AnalyticsManager {
     });
   }
 
-  renderPlannedRouteChart(containerCanvas, profileData, routeColor = '#0ea5e9', onPointHover = null) {
+  renderPlannedRouteChart(containerCanvas, profileData, routeColor = '#0066FF', onPointHover = null) {
     if (!containerCanvas) return;
 
     if (containerCanvas._chartInstance) {
@@ -99,10 +102,10 @@ export class AnalyticsManager {
     const elevations = profileData.map(p => p.elevationM);
     const slopes = profileData.map(p => p.slopeGrade || 0);
 
-    const activeColor = routeColor || '#0ea5e9';
+    const activeColor = routeColor || '#0066FF';
 
     const gradient = ctx.createLinearGradient(0, 0, 0, 160);
-    gradient.addColorStop(0, activeColor + '44');
+    gradient.addColorStop(0, activeColor + '33');
     gradient.addColorStop(1, activeColor + '00');
 
     const chart = new Chart(ctx, {
@@ -128,14 +131,14 @@ export class AnalyticsManager {
           {
             label: 'Pendenza Stimata (%)',
             data: slopes,
-            borderColor: '#f59e0b',
+            borderColor: '#c85a32',
             borderWidth: 1.5,
             borderDash: [4, 4],
             fill: false,
             tension: 0.3,
             pointRadius: 0,
             pointHoverRadius: 4,
-            pointHoverBackgroundColor: '#f59e0b',
+            pointHoverBackgroundColor: '#c85a32',
             yAxisID: 'ySlope'
           }
         ]
@@ -144,15 +147,18 @@ export class AnalyticsManager {
         responsive: true,
         maintainAspectRatio: false,
         interaction: { mode: 'index', intersect: false },
+        layout: {
+          padding: { top: 4, bottom: 6, left: 6, right: 12 }
+        },
         plugins: {
           legend: {
             display: true,
-            labels: { color: '#8696a0', font: { size: 10 }, boxWidth: 12 }
+            labels: { color: '#64748b', font: { size: 10 }, boxWidth: 12 }
           },
           tooltip: {
-            backgroundColor: '#111b21',
-            titleColor: '#e9edef',
-            borderColor: '#222d34',
+            backgroundColor: '#ffffff',
+            titleColor: '#1a1d20',
+            borderColor: '#e2e8f0',
             borderWidth: 1,
             padding: 10,
             callbacks: {
@@ -170,26 +176,26 @@ export class AnalyticsManager {
         },
         scales: {
           x: {
-            grid: { color: 'rgba(255, 255, 255, 0.04)' },
-            ticks: { color: '#8696a0', font: { size: 9 }, maxTicksLimit: 12 }
+            grid: { color: 'rgba(0, 0, 0, 0.05)' },
+            ticks: { color: '#64748b', font: { size: 9 }, maxTicksLimit: 10, maxRotation: 0, padding: 2 }
           },
           yElevation: {
             type: 'linear',
             position: 'left',
-            grid: { color: 'rgba(255, 255, 255, 0.04)' },
-            ticks: { color: '#8696a0', font: { size: 9 } },
-            title: { display: true, text: 'Quota (m)', color: '#8696a0', font: { size: 9 } }
+            grid: { color: 'rgba(0, 0, 0, 0.05)' },
+            ticks: { color: '#64748b', font: { size: 9 } },
+            title: { display: true, text: 'Quota (m)', color: '#64748b', font: { size: 9 } }
           },
           ySlope: {
             type: 'linear',
             position: 'right',
             grid: { drawOnChartArea: false },
             ticks: {
-              color: '#f59e0b',
+              color: '#c85a32',
               font: { size: 9 },
               callback: (val) => `${val}%`
             },
-            title: { display: true, text: 'Pendenza (%)', color: '#f59e0b', font: { size: 9 } }
+            title: { display: true, text: 'Pendenza (%)', color: '#c85a32', font: { size: 9 } }
           }
         },
         onHover: (event, activeElements) => {
@@ -281,36 +287,39 @@ export class AnalyticsManager {
         responsive: true,
         maintainAspectRatio: false,
         interaction: { mode: 'index', intersect: false },
+        layout: {
+          padding: { top: 4, bottom: 6, left: 6, right: 12 }
+        },
         plugins: {
           legend: {
             display: true,
-            labels: { color: '#8696a0', font: { size: 10 }, boxWidth: 12 }
+            labels: { color: '#64748b', font: { size: 10 }, boxWidth: 12 }
           },
           tooltip: {
-            backgroundColor: '#111b21',
-            titleColor: '#e9edef',
-            borderColor: '#222d34',
+            backgroundColor: '#ffffff',
+            titleColor: '#1a1d20',
+            borderColor: '#e2e8f0',
             borderWidth: 1
           }
         },
         scales: {
           x: {
-            grid: { color: 'rgba(255, 255, 255, 0.04)' },
-            ticks: { color: '#8696a0', font: { size: 9 } }
+            grid: { color: 'rgba(0, 0, 0, 0.05)' },
+            ticks: { color: '#64748b', font: { size: 9 }, maxTicksLimit: 10, maxRotation: 0, padding: 2 }
           },
           y1: {
             type: 'linear',
             position: 'left',
-            grid: { color: 'rgba(255, 255, 255, 0.04)' },
-            ticks: { color: '#8696a0', font: { size: 9 } },
-            title: { display: true, text: 'Quota (m) / HR (bpm)', color: '#8696a0', font: { size: 9 } }
+            grid: { color: 'rgba(0, 0, 0, 0.05)' },
+            ticks: { color: '#64748b', font: { size: 9 } },
+            title: { display: true, text: 'Quota (m) / HR (bpm)', color: '#64748b', font: { size: 9 } }
           },
           y2: {
             type: 'linear',
             position: 'right',
             grid: { drawOnChartArea: false },
-            ticks: { color: '#8696a0', font: { size: 9 } },
-            title: { display: true, text: 'Velocità (km/h) / Cadence (rpm)', color: '#8696a0', font: { size: 9 } }
+            ticks: { color: '#64748b', font: { size: 9 } },
+            title: { display: true, text: 'Velocità (km/h) / Cadence (rpm)', color: '#64748b', font: { size: 9 } }
           }
         }
       }

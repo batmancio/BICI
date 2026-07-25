@@ -1,6 +1,4 @@
-/* ==========================================================================
-   BIKEROUTE TRACKER - BRYTON FIT & GPX FILE PARSER
-   ========================================================================== */
+import { ElevationEngine } from './elevationEngine.js';
 
 export class FitParserEngine {
   async parseWorkoutFile(file) {
@@ -63,14 +61,12 @@ export class FitParserEngine {
           }
 
           const coords = [];
-          const profile = [];
+          const rawPoints = [];
           let totalDist = 0;
-          let totalDPlus = 0;
-          let prevEle = null;
           let prevLat = null;
           let prevLng = null;
 
-          trkpts.forEach((pt, i) => {
+          trkpts.forEach((pt) => {
             const lat = parseFloat(pt.getAttribute('lat'));
             const lng = parseFloat(pt.getAttribute('lon'));
             const eleNode = pt.querySelector('ele');
@@ -81,33 +77,39 @@ export class FitParserEngine {
             if (prevLat !== null) {
               const d = this.haversineDistance(prevLat, prevLng, lat, lng);
               totalDist += d;
-              if (ele > prevEle) {
-                totalDPlus += (ele - prevEle);
-              }
             }
 
-            if (i % Math.max(1, Math.floor(trkpts.length / 50)) === 0) {
-              profile.push({ distanceKm: parseFloat(totalDist.toFixed(1)), elevationM: Math.round(ele) });
-            }
+            rawPoints.push({
+              distanceKm: totalDist,
+              elevationM: ele
+            });
 
             prevLat = lat;
             prevLng = lng;
-            prevEle = ele;
+          });
+
+          // Processamento metriche altimetriche con filtro ad isteresi e smoothing pesato
+          const metrics = ElevationEngine.processElevationProfile(rawPoints, {
+            minThresholdM: 2.0,
+            smoothingPasses: 2,
+            isRawGpx: true
           });
 
           resolve({
             fileName: file.name,
             date: new Date().toLocaleDateString('it-IT'),
             distanceKm: parseFloat(totalDist.toFixed(1)),
-            elevationGainM: Math.round(totalDPlus),
+            elevationGainM: metrics.elevationGainM,
+            elevationLossM: metrics.elevationLossM,
+            maxElevationM: metrics.maxElevationM,
             avgSpeedKmH: 26.4,
             maxSpeedKmH: 48.2,
             avgHeartRateBpm: 148,
             avgCadenceRpm: 84,
             caloriesKcal: Math.round(totalDist * 28),
-            effortRating: totalDPlus > 500 ? 'Intenso' : 'Moderato',
+            effortRating: metrics.elevationGainM > 500 ? 'Intenso' : 'Moderato',
             coords: coords,
-            elevationProfile: profile
+            elevationProfile: metrics.elevationProfile
           });
         } catch (err) {
           resolve(this.generateRealisticBrytonMock(file.name));

@@ -232,53 +232,114 @@ function initApp() {
   let customWaypoints = [];
   let currentRouteMode = 'oneway';
 
-  // Modalità di percorso (Solo Andata, A/R, Anello)
+  // Floating Search Overlay Elements
+  const floatingSearchOverlay = document.getElementById('floatingSearchOverlay');
+  const floatingInputStart = document.getElementById('floatingInputStart');
+  const floatingInputEnd = document.getElementById('floatingInputEnd');
+  const floatingStartAutocomplete = document.getElementById('floatingStartAutocomplete');
+  const floatingEndAutocomplete = document.getElementById('floatingEndAutocomplete');
+  const btnFloatingCalculate = document.getElementById('btnFloatingCalculate');
+
+  // Setup Autocomplete per Floating Inputs
+  setupAutocomplete(floatingInputStart, floatingStartAutocomplete);
+  setupAutocomplete(floatingInputEnd, floatingEndAutocomplete);
+
+  // Sincronizzazione Input tra Floating Overlay e Sidebar
+  function syncInputs(source, target) {
+    if (!source || !target) return;
+    source.addEventListener('input', () => {
+      target.value = source.value;
+      if (source.dataset.lat) target.dataset.lat = source.dataset.lat;
+      if (source.dataset.lng) target.dataset.lng = source.dataset.lng;
+    });
+  }
+
+  syncInputs(floatingInputStart, inputStart);
+  syncInputs(inputStart, floatingInputStart);
+  syncInputs(floatingInputEnd, inputEnd);
+  syncInputs(inputEnd, floatingInputEnd);
+
+  // Sync Selettori Modalità (Solo Andata, A/R, Anello)
   const modeBtns = document.querySelectorAll('.mode-btn');
   modeBtns.forEach(btn => {
     btn.addEventListener('click', () => {
-      modeBtns.forEach(b => {
-        b.classList.remove('active');
-        b.style.background = 'transparent';
-        b.style.color = 'var(--text-muted)';
-      });
-      btn.classList.add('active');
-      btn.style.background = 'var(--bg-pill-active)';
-      btn.style.color = '#ffffff';
-
       currentRouteMode = btn.dataset.mode || 'oneway';
 
-      if (currentRouteMode === 'loop') {
-        if (inputEnd) {
-          inputEnd.placeholder = "Giro ad Anello (coincide con la partenza)";
-          inputEnd.value = inputStart.value ? `${inputStart.value} (Anello)` : '';
-          inputEnd.disabled = true;
-        }
-      } else {
-        if (inputEnd) {
-          inputEnd.placeholder = "Scrivi la destinazione...";
-          if (inputEnd.value.includes('(Anello)')) inputEnd.value = '';
-          inputEnd.disabled = false;
-        }
-      }
+      modeBtns.forEach(b => {
+        const isMatch = (b.dataset.mode || 'oneway') === currentRouteMode;
+        b.classList.toggle('active', isMatch);
+        b.style.background = isMatch ? 'var(--bg-pill-active)' : 'transparent';
+        b.style.color = isMatch ? '#ffffff' : 'var(--text-muted)';
+      });
 
-      handleCalculateRoutes();
+      const updateInputEndState = (inp) => {
+        if (!inp) return;
+        if (currentRouteMode === 'loop') {
+          inp.placeholder = "Giro ad Anello (coincide con la partenza)";
+          inp.value = (inputStart.value || floatingInputStart?.value) ? `${inputStart.value || floatingInputStart?.value} (Anello)` : '';
+          inp.disabled = true;
+        } else {
+          inp.placeholder = "Scrivi la destinazione...";
+          if (inp.value.includes('(Anello)')) inp.value = '';
+          inp.disabled = false;
+        }
+      };
+
+      updateInputEndState(inputEnd);
+      updateInputEndState(floatingInputEnd);
+
+      if (inputStart.value.trim() || floatingInputStart?.value.trim()) {
+        handleCalculateRoutes();
+      }
     });
   });
 
+  if (btnFloatingCalculate) {
+    btnFloatingCalculate.addEventListener('click', () => {
+      if (floatingInputStart?.value) inputStart.value = floatingInputStart.value;
+      if (floatingInputEnd?.value) inputEnd.value = floatingInputEnd.value;
+      customWaypoints = [];
+      clickState = 'start';
+      handleCalculateRoutes();
+    });
+  }
+
   async function handleCalculateRoutes() {
     try {
-      const startVal = inputStart.value.trim() || 'Aprilia';
-      const endVal = (currentRouteMode === 'loop') ? startVal : (inputEnd.value.trim() || 'Albano Laziale');
+      const startVal = inputStart.value.trim() || floatingInputStart?.value.trim() || '';
+      const endVal = (currentRouteMode === 'loop') ? startVal : (inputEnd.value.trim() || floatingInputEnd?.value.trim() || '');
       const targetKm = parseInt(sliderTargetKm?.value || '45', 10);
+
+      if (!startVal || (currentRouteMode !== 'loop' && !endVal)) {
+        routeCardsContainer.innerHTML = `
+          <div style="padding: 20px 14px; text-align: center; color: var(--text-muted); background: var(--bg-card); border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+            <i class="fa-solid fa-map-location-dot" style="font-size: 1.8rem; color: var(--brand-primary); margin-bottom: 8px;"></i>
+            <div style="font-weight: 700; font-size: 0.88rem; color: var(--text-main); margin-bottom: 4px;">Scegli l'itinerario ciclistico</div>
+            <div style="font-size: 0.76rem; line-height: 1.4; color: var(--text-muted);">
+              Inserisci Partenza e Arrivo per elaborare le opzioni di percorso.
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      // Copia valori se necessario
+      inputStart.value = startVal;
+      if (currentRouteMode !== 'loop') inputEnd.value = endVal;
 
       let startCoords = null;
       let endCoords = null;
 
       if (inputStart?.dataset.lat && inputStart?.dataset.lng) {
         startCoords = [parseFloat(inputStart.dataset.lat), parseFloat(inputStart.dataset.lng)];
+      } else if (floatingInputStart?.dataset.lat && floatingInputStart?.dataset.lng) {
+        startCoords = [parseFloat(floatingInputStart.dataset.lat), parseFloat(floatingInputStart.dataset.lng)];
       }
+
       if (inputEnd?.dataset.lat && inputEnd?.dataset.lng && currentRouteMode !== 'loop') {
         endCoords = [parseFloat(inputEnd.dataset.lat), parseFloat(inputEnd.dataset.lng)];
+      } else if (floatingInputEnd?.dataset.lat && floatingInputEnd?.dataset.lng && currentRouteMode !== 'loop') {
+        endCoords = [parseFloat(floatingInputEnd.dataset.lat), parseFloat(floatingInputEnd.dataset.lng)];
       }
 
       routeCardsContainer.innerHTML = `
@@ -291,6 +352,14 @@ function initApp() {
 
       activeRoutes = await explorerEngine.discoverRoutes(startVal, endVal, targetKm, startCoords, endCoords, customWaypoints, currentRouteMode);
       renderTechnicalSpecCards(activeRoutes);
+
+      // APERTURA AUTOMATICA DELLA SIDEBAR E NASCONDIMENTO FLOATING OVERLAY
+      if (appSidebar) {
+        appSidebar.classList.remove('collapsed');
+      }
+      if (floatingSearchOverlay) {
+        floatingSearchOverlay.classList.add('hidden');
+      }
 
       mapManager.clearRoutes();
 
@@ -467,7 +536,7 @@ function initApp() {
       });
       btn.classList.add('active');
       btn.style.background = 'var(--brand-primary)';
-      btn.style.color = '#111';
+      btn.style.color = '#ffffff';
 
       Object.keys(brytonTabContents).forEach(key => {
         if (brytonTabContents[key]) brytonTabContents[key].style.display = (key === target) ? 'block' : 'none';
@@ -557,7 +626,7 @@ function initApp() {
 
       renderTechnicalSpecCards(activeRoutes);
     });
-  }
+  });
 
   btnExportGpx.addEventListener('click', () => {
     plannerManager.exportToGpx();
@@ -600,10 +669,10 @@ function initApp() {
       document.getElementById('resEffort').textContent = metrics.effortRating;
 
       mapManager.clearRoutes();
-      mapManager.renderRoutePolyline(metrics.coords, '#0ea5e9', true, 'user-workout');
+      mapManager.renderRoutePolyline(metrics.coords, '#0066FF', true, 'user-workout');
       mapManager.fitBoundsToRoutes();
 
-      analyticsManager.renderElevationChart(elevationCanvas, metrics.elevationProfile, '#0ea5e9');
+      analyticsManager.renderElevationChart(elevationCanvas, metrics.elevationProfile, '#0066FF');
 
       document.querySelector('.nav-btn[data-tab="analysis"]').click();
 
@@ -640,23 +709,43 @@ function initApp() {
     alert("Account Strava collegato con successo! Sincronizzazione uscite Bryton completata.");
   });
 
-  btnToggleChart.addEventListener('click', () => {
-    elevationPanel.classList.toggle('collapsed');
-  });
+  const toggleChartPanel = (e) => {
+    if (e) e.stopPropagation();
+    const isCollapsed = elevationPanel.classList.toggle('collapsed');
+    btnToggleChart.innerHTML = isCollapsed
+      ? '<i class="fa-solid fa-chevron-up"></i> Espandi'
+      : '<i class="fa-solid fa-chevron-down"></i> Minimizza';
+
+    setTimeout(() => {
+      if (elevationCanvas._chartInstance) {
+        elevationCanvas._chartInstance.resize();
+      }
+    }, 280);
+  };
+
+  btnToggleChart.addEventListener('click', toggleChartPanel);
+
+  // Cliccando sull'intestazione quando il pannello è minimizzato lo riapre
+  const chartHeader = elevationPanel.querySelector('.chart-header');
+  if (chartHeader) {
+    chartHeader.addEventListener('click', (e) => {
+      if (elevationPanel.classList.contains('collapsed')) {
+        toggleChartPanel(e);
+      }
+    });
+  }
 
   const btnToggleSidebar = document.getElementById('btnToggleSidebar');
   const appSidebar = document.getElementById('appSidebar');
   if (btnToggleSidebar && appSidebar) {
     btnToggleSidebar.addEventListener('click', () => {
-      appSidebar.classList.toggle('collapsed');
+      const isCollapsed = appSidebar.classList.toggle('collapsed');
+      if (floatingSearchOverlay) {
+        floatingSearchOverlay.classList.toggle('hidden', !isCollapsed);
+      }
       setTimeout(() => mapManager.refreshMapSize(), 230);
     });
   }
-
-  // Calcolo iniziale automatico dei percorsi all'avvio dell'applicazione
-  setTimeout(() => {
-    handleCalculateRoutes();
-  }, 100);
 }
 
 if (document.readyState === 'loading') {

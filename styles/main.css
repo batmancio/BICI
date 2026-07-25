@@ -1,53 +1,58 @@
 /* ==========================================================================
-   STRADE BIANCHE ROUTE EXPLORER & ANALYTICS - TECHNICAL DESIGN SYSTEM
-   Minimalist Architectural Dark Theme, High-Density Data & Technical Typography
+   STRADE BIANCHE ROUTE EXPLORER & ANALYTICS - DESIGN SYSTEM
+   Option B: Clean & Outdoors (Interfaccia Chiara, Alto Contrasto, Mappa Cartografica)
    ========================================================================== */
 
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
 :root {
-  /* Technical Tuscan Dark Palette (Non-Strava Tuscan Dust Gold) */
-  --bg-main: #0d0b0a;          /* Deep Obsidian Earth */
-  --bg-sidebar: #141210;       /* Dark Tuscan Surface */
-  --bg-header: #1a1714;        /* Siena Header Surface */
-  --bg-card: #1a1714;          /* Siena Card Surface */
-  --bg-card-hover: #24201c;    /* Warm Earth Hover */
-  --bg-input: #0f0d0c;         /* Dark Technical Input */
-  --bg-pill: #1a1714;
-  --bg-pill-active: #d4af37;   /* Tuscan Dust Gold Active */
+  /* Clean & Outdoors Palette */
+  --bg-main: #F8F9FA;          /* Grigio chiarissimo */
+  --bg-sidebar: #FFFFFF;       /* Bianco puro Surface */
+  --bg-header: #FFFFFF;        /* Bianco puro Header Surface */
+  --bg-card: #FFFFFF;          /* Bianco puro Card Surface */
+  --bg-card-hover: #F1F5F9;    /* Soft Slate Hover */
+  --bg-input: #F8FAFC;         /* Light Input Surface */
+  --bg-pill: #E2E8F0;
+  --bg-pill-active: #C85A32;   /* Terra bruciata Active */
   
-  --border-color: #2b2520;     /* Crisp Architectural Border */
-  --border-light: #3a322a;
-  --border-focus: #e6b85c;     /* Dust Gold Focus */
+  --border-color: #E2E8F0;     /* Crisp Architectural Light Border */
+  --border-light: #CBD5E1;
+  --border-focus: #C85A32;     /* Terra bruciata Focus */
   
-  /* Tuscan Dust Gold & Cyan Technical Accents */
-  --brand-primary: #e6b85c;    /* Tuscan Dust Gold (Primary Brand Accent) */
-  --brand-primary-hover: #f5cb74;
-  --brand-accent: #38bdf8;     /* Technical Chalk Cyan */
+  /* Brand & Accent */
+  --brand-primary: #C85A32;    /* Terra bruciata (Primary Brand Accent) */
+  --brand-primary-hover: #B24D28;
+  --brand-accent: #0066FF;     /* Blu elettrico ad alta visibilità (Path Trace) */
   
   /* Technical Slope Colors */
-  --slope-flat: #2e8b57;       /* Cypress Green <3% */
-  --slope-mild: #38bdf8;       /* Chalk Cyan 3-6% */
-  --slope-mod: #e6b85c;        /* Dust Gold 6-9% */
-  --slope-steep: #c0392b;      /* Siena Red 9-12% */
-  --slope-wall: #7b1113;       /* Deep Burgundy >12% */
+  --slope-flat: #10B981;       /* Mint Green <3% */
+  --slope-mild: #0066FF;       /* Electric Blue 3-6% */
+  --slope-mod: #8B5CF6;        /* Violet 6-9% */
+  --slope-steep: #C85A32;      /* Terra Bruciata 9-12% */
+  --slope-wall: #991B1B;       /* Deep Burgundy >12% */
 
   /* High-Contrast Technical Typography */
-  --text-main: #f5f0eb;        /* Chalk White */
-  --text-muted: #bcae9e;       /* Readable Sand Beige */
-  --text-dim: #857a6e;         /* Muted Earth */
+  --text-main: #1A1D20;        /* Quasi nero per contrasto tipografico netto */
+  --text-muted: #64748B;       /* Muted Slate Text */
+  --text-dim: #94A3B8;         /* Dim Slate Text */
+
+  /* Shadow & Elevation System */
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+  --shadow-lg: 0 10px 25px rgba(0,0,0,0.12);
   
-  /* Technical Sharp Geometry (NO MORE BUBBLES/PILLS) */
-  --radius-xs: 2px;
-  --radius-sm: 4px;
-  --radius-md: 4px;
-  --radius-lg: 6px;
-  --radius-full: 4px;          /* Eliminazione pillole arrotondate 9999px */
+  /* Geometry & Typography */
+  --radius-xs: 3px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-full: 6px;
   
   --font-main: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
 
-  --transition-fast: all 0.12s ease-in-out;
+  --transition-fast: all 0.15s ease-in-out;
 }
 
 * {
@@ -74,42 +79,44 @@ body {
 }
 
 /* ==========================================================================
-   HEADER NAVBAR (MINIMAL & LINEAR)
+   HEADER NAVBAR (CLEAN & OUTDOORS)
    ========================================================================== */
 
 .app-header {
-  height: 52px;
+  height: 54px;
   background-color: var(--bg-header);
   border-bottom: 1px solid var(--border-color);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 16px;
+  padding: 0 18px;
   z-index: 1000;
   flex-shrink: 0;
+  box-shadow: var(--shadow-sm);
 }
 
 .brand-logo {
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 1.05rem;
+  font-size: 1.08rem;
   font-weight: 800;
   color: var(--text-main);
   letter-spacing: -0.3px;
 }
 
 .brand-logo-container {
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   border-radius: var(--radius-sm);
-  background-color: #ffffff;
+  background-color: #FFFFFF;
+  border: 1px solid var(--border-color);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 2px;
   overflow: hidden;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--shadow-sm);
   flex-shrink: 0;
 }
 
@@ -121,12 +128,12 @@ body {
 
 .brand-title span {
   color: var(--brand-primary);
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .nav-tabs {
   display: flex;
-  gap: 4px;
+  gap: 6px;
   background: transparent;
   padding: 0;
 }
@@ -135,8 +142,8 @@ body {
   background-color: transparent;
   border: 1px solid transparent;
   color: var(--text-muted);
-  padding: 6px 14px;
-  font-size: 0.8rem;
+  padding: 7px 14px;
+  font-size: 0.82rem;
   font-weight: 600;
   border-radius: var(--radius-sm);
   cursor: pointer;
@@ -153,21 +160,22 @@ body {
 }
 
 .nav-btn.active {
-  background-color: var(--bg-pill-active);
-  color: #ffffff;
+  background-color: var(--brand-primary);
+  color: #FFFFFF;
   border-color: var(--brand-primary);
+  box-shadow: 0 2px 6px rgba(200, 90, 50, 0.25);
 }
 
 .header-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
 .btn {
-  padding: 6px 13px;
+  padding: 7px 14px;
   border-radius: var(--radius-sm);
-  font-size: 0.78rem;
+  font-size: 0.8rem;
   font-weight: 600;
   font-family: var(--font-main);
   cursor: pointer;
@@ -180,8 +188,9 @@ body {
 
 .btn-primary {
   background-color: var(--brand-primary);
-  color: #110e0d;
+  color: #FFFFFF;
   border-color: var(--brand-primary);
+  box-shadow: 0 2px 6px rgba(200, 90, 50, 0.22);
 }
 
 .btn-primary:hover {
@@ -192,6 +201,7 @@ body {
   background-color: var(--bg-card);
   color: var(--text-main);
   border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
 }
 
 .btn-secondary:hover {
@@ -200,20 +210,20 @@ body {
 }
 
 /* ==========================================================================
-   MAIN LAYOUT & SIDEBAR (COLLAPSIBLE & HIGH DENSITY)
+   MAIN LAYOUT & SIDEBAR (CLEAN & LIGHT)
    ========================================================================== */
 
 .app-main {
   flex: 1;
   display: flex;
-  height: calc(100vh - 52px);
+  height: calc(100vh - 54px);
   position: relative;
   overflow: hidden;
 }
 
 .sidebar {
-  width: 380px;
-  min-width: 380px;
+  width: 390px;
+  min-width: 390px;
   background-color: var(--bg-sidebar);
   border-right: 1px solid var(--border-color);
   display: flex;
@@ -221,49 +231,50 @@ body {
   z-index: 500;
   transition: margin-left 0.22s cubic-bezier(0.16, 1, 0.3, 1);
   position: relative;
+  box-shadow: var(--shadow-sm);
 }
 
 .sidebar.collapsed {
-  margin-left: -380px;
+  margin-left: -390px;
 }
 
 .sidebar-content {
   flex: 1;
   overflow-y: auto;
-  padding: 14px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 16px;
 }
 
 .sidebar-content::-webkit-scrollbar {
-  width: 4px;
+  width: 5px;
 }
 .sidebar-content::-webkit-scrollbar-track {
-  background: var(--bg-sidebar);
+  background: var(--bg-main);
 }
 .sidebar-content::-webkit-scrollbar-thumb {
   background: var(--border-light);
-  border-radius: 2px;
+  border-radius: 3px;
 }
 
 /* Floating Sidebar Toggle Button on Map */
 .sidebar-toggle-btn {
   position: absolute;
-  top: 12px;
-  left: 12px;
+  top: 14px;
+  left: 14px;
   z-index: 800;
   background-color: var(--bg-sidebar);
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--border-color);
   color: var(--text-main);
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--shadow-md);
   transition: var(--transition-fast);
 }
 
@@ -290,7 +301,7 @@ body {
   bottom: 0;
   width: 100%;
   height: 100%;
-  background-color: #14110f;
+  background-color: #F8F9FA;
   z-index: 1;
 }
 
@@ -299,11 +310,16 @@ body {
   font-family: var(--font-main) !important;
 }
 
+.leaflet-top.leaflet-left {
+  top: 54px !important;
+  left: 4px !important;
+}
+
 .leaflet-control-zoom {
   border: 1px solid var(--border-color) !important;
   border-radius: var(--radius-sm) !important;
   overflow: hidden;
-  box-shadow: none !important;
+  box-shadow: var(--shadow-sm) !important;
 }
 
 .leaflet-control-zoom a {
@@ -323,17 +339,17 @@ body {
   border: 1px solid var(--border-color) !important;
   border-radius: var(--radius-sm) !important;
   color: var(--text-main) !important;
-  box-shadow: none !important;
-  padding: 6px 10px !important;
-  font-size: 0.78rem !important;
+  box-shadow: var(--shadow-md) !important;
+  padding: 8px 12px !important;
+  font-size: 0.8rem !important;
 }
 
 /* ==========================================================================
-   PANNELLO PIANIFICAZIONE & AUTOCOMPLETE (TECHNICAL INPUTS)
+   INPUTS & AUTOCOMPLETE
    ========================================================================== */
 
 .section-title {
-  font-size: 0.73rem;
+  font-size: 0.74rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.8px;
@@ -343,19 +359,20 @@ body {
   justify-content: space-between;
   border-bottom: 1px solid var(--border-color);
   padding-bottom: 6px;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .route-inputs-card {
   background-color: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
-  padding: 12px;
+  padding: 14px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   position: relative;
   z-index: 100;
+  box-shadow: var(--shadow-sm);
 }
 
 .input-group {
@@ -366,7 +383,7 @@ body {
 }
 
 .input-group label {
-  font-size: 0.75rem;
+  font-size: 0.76rem;
   font-weight: 600;
   color: var(--text-muted);
   display: flex;
@@ -378,9 +395,9 @@ body {
   background-color: var(--bg-input);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
-  padding: 7px 10px;
+  padding: 8px 12px;
   color: var(--text-main);
-  font-size: 0.84rem;
+  font-size: 0.86rem;
   font-family: var(--font-main);
   outline: none;
   transition: var(--transition-fast);
@@ -388,27 +405,28 @@ body {
 
 .input-field:focus {
   border-color: var(--brand-primary);
-  background-color: #0d0b0a;
+  background-color: #FFFFFF;
+  box-shadow: 0 0 0 3px rgba(200, 90, 50, 0.12);
 }
 
 .autocomplete-dropdown {
   position: absolute;
-  top: calc(100% + 2px);
+  top: calc(100% + 4px);
   left: 0;
   right: 0;
-  background-color: var(--bg-header);
+  background-color: var(--bg-sidebar);
   border: 1px solid var(--border-light);
   border-radius: var(--radius-sm);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6);
+  box-shadow: var(--shadow-lg);
   z-index: 2000;
-  max-height: 180px;
+  max-height: 200px;
   overflow-y: auto;
   display: none;
 }
 
 .autocomplete-item {
-  padding: 7px 10px;
-  font-size: 0.8rem;
+  padding: 8px 12px;
+  font-size: 0.82rem;
   font-weight: 500;
   color: var(--text-main);
   cursor: pointer;
@@ -432,23 +450,24 @@ body {
 }
 
 /* ==========================================================================
-   TECHNICAL SPEC CARDS & ROTTE (HIGH DENSITY DATA)
+   TECHNICAL SPEC CARDS & ROTTE
    ========================================================================== */
 
 .route-cards-list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
 .spec-card {
   background-color: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
-  padding: 10px 12px;
+  padding: 12px;
   cursor: pointer;
   transition: var(--transition-fast);
   position: relative;
+  box-shadow: var(--shadow-sm);
 }
 
 .spec-card:hover {
@@ -458,19 +477,20 @@ body {
 
 .spec-card.selected {
   border: 1px solid var(--brand-primary);
-  border-left: 3px solid var(--brand-primary);
-  background-color: #211c18;
+  border-left: 4px solid var(--brand-primary);
+  background-color: #FFF8F6;
+  box-shadow: var(--shadow-md);
 }
 
 .spec-card-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 
 .route-name {
-  font-size: 0.85rem;
+  font-size: 0.88rem;
   font-weight: 700;
   display: flex;
   align-items: center;
@@ -479,16 +499,16 @@ body {
 }
 
 .route-color-pill {
-  width: 8px;
-  height: 8px;
-  border-radius: 1px;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
   flex-shrink: 0;
 }
 
 .badge {
-  font-size: 0.68rem;
+  font-size: 0.7rem;
   font-weight: 600;
-  padding: 2px 6px;
+  padding: 3px 8px;
   border-radius: var(--radius-xs);
   font-family: var(--font-main);
   display: inline-flex;
@@ -497,34 +517,33 @@ body {
 }
 
 .badge-low-traffic {
-  background-color: rgba(46, 139, 87, 0.15);
-  color: #4ade80;
-  border: 1px solid rgba(46, 139, 87, 0.3);
+  background-color: rgba(16, 185, 129, 0.12);
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.3);
 }
 
 .badge-med-traffic {
-  background-color: rgba(230, 184, 92, 0.15);
-  color: var(--brand-accent);
-  border: 1px solid rgba(230, 184, 92, 0.3);
+  background-color: rgba(200, 90, 50, 0.12);
+  color: var(--brand-primary);
+  border: 1px solid rgba(200, 90, 50, 0.3);
 }
 
 .badge-high-traffic {
-  background-color: rgba(192, 57, 43, 0.15);
-  color: #f87171;
-  border: 1px solid rgba(192, 57, 43, 0.3);
+  background-color: rgba(220, 38, 38, 0.12);
+  color: #DC2626;
+  border: 1px solid rgba(220, 38, 38, 0.3);
 }
 
-/* Griglia Telemetrica Tabulare Semplificata (No nested boxes) */
 .spec-metrics-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 4px;
-  margin-bottom: 6px;
+  gap: 6px;
+  margin-bottom: 8px;
 }
 
 .metric-box {
   background-color: var(--bg-input);
-  padding: 5px 6px;
+  padding: 6px 8px;
   border-radius: var(--radius-xs);
   border: 1px solid var(--border-color);
   text-align: center;
@@ -532,61 +551,61 @@ body {
 
 .metric-val {
   font-family: var(--font-mono);
-  font-size: 0.88rem;
+  font-size: 0.9rem;
   font-weight: 700;
   color: var(--text-main);
 }
 
 .metric-val span {
-  font-size: 0.68rem;
-  font-weight: 400;
+  font-size: 0.7rem;
+  font-weight: 500;
   color: var(--text-muted);
   font-family: var(--font-main);
 }
 
 .metric-lbl {
-  font-size: 0.62rem;
+  font-size: 0.64rem;
   font-weight: 600;
   color: var(--text-dim);
   text-transform: uppercase;
   letter-spacing: 0.4px;
-  margin-top: 1px;
+  margin-top: 2px;
 }
 
 /* ==========================================================================
-   PANNELLO ALTIMETRICO COMPATTO & LEGENDA SULLA MAPPA
+   PANNELLO ALTIMETRICO & LEGENDA MAPPA
    ========================================================================== */
 
 .floating-elevation-panel {
   position: absolute;
-  bottom: 14px;
-  left: 56px;
-  right: 14px;
-  height: 145px;
+  bottom: 16px;
+  left: 60px;
+  right: 16px;
+  height: 180px;
   background-color: var(--bg-sidebar);
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm);
-  padding: 8px 12px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  box-shadow: var(--shadow-md);
   z-index: 600;
   display: flex;
   flex-direction: column;
-  transition: transform 0.2s ease-in-out;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .floating-elevation-panel.collapsed {
-  transform: translateY(calc(100% + 20px));
+  transform: translateY(calc(100% - 38px));
 }
 
 .chart-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
 }
 
 .chart-title {
-  font-size: 0.78rem;
+  font-size: 0.8rem;
   font-weight: 700;
   display: flex;
   align-items: center;
@@ -601,25 +620,47 @@ body {
   height: 100%;
 }
 
+/* Floating Search Overlay (Sulla Mappa all'avvio) */
+.floating-search-overlay {
+  position: absolute;
+  top: 14px;
+  left: 60px;
+  z-index: 700;
+  width: 350px;
+  background-color: var(--bg-sidebar);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  box-shadow: var(--shadow-lg);
+  transition: opacity 0.22s ease-in-out, transform 0.22s ease-in-out;
+}
+
+.floating-search-overlay.hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-10px);
+}
+
 /* Legenda Pendenze sulla Mappe */
 .map-slope-legend {
   position: absolute;
-  top: 12px;
-  left: 52px;
+  top: 14px;
+  right: 14px;
   background-color: var(--bg-sidebar);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
-  padding: 6px 10px;
+  padding: 8px 12px;
   z-index: 550;
-  font-size: 0.72rem;
+  font-size: 0.74rem;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
+  box-shadow: var(--shadow-sm);
 }
 
 .slope-legend-title {
   font-weight: 700;
-  font-size: 0.68rem;
+  font-size: 0.7rem;
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -627,51 +668,48 @@ body {
 
 .slope-legend-items {
   display: flex;
-  gap: 8px;
+  gap: 10px;
 }
 
 .slope-legend-item {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
   color: var(--text-main);
   font-weight: 600;
   font-family: var(--font-mono);
-  font-size: 0.7rem;
+  font-size: 0.72rem;
 }
 
 .slope-color-box {
-  width: 10px;
-  height: 6px;
-  border-radius: 1px;
+  width: 12px;
+  height: 8px;
+  border-radius: 2px;
 }
 
-/* Filter chips & Folder chips (Clean & Minimal) */
+/* Filter chips */
 .sort-filter-bar, .folder-chip-bar {
   display: flex;
-  gap: 4px;
+  gap: 6px;
   overflow-x: auto;
   scrollbar-width: none;
-}
-
-.sort-filter-bar::-webkit-scrollbar, .folder-chip-bar::-webkit-scrollbar {
-  display: none;
 }
 
 .filter-chip, .folder-chip {
   background-color: var(--bg-card);
   border: 1px solid var(--border-color);
   color: var(--text-muted);
-  padding: 4px 10px;
+  padding: 5px 12px;
   border-radius: var(--radius-sm);
-  font-size: 0.74rem;
+  font-size: 0.76rem;
   font-weight: 600;
   white-space: nowrap;
   cursor: pointer;
   transition: var(--transition-fast);
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
+  box-shadow: var(--shadow-sm);
 }
 
 .filter-chip:hover, .folder-chip:hover {
@@ -681,19 +719,21 @@ body {
 
 .filter-chip.active, .folder-chip.active {
   background-color: var(--brand-primary);
-  color: #110e0d;
+  color: #FFFFFF;
   border-color: var(--brand-primary);
+  box-shadow: 0 2px 6px rgba(200, 90, 50, 0.25);
 }
 
 /* Upload Dropzone */
 .upload-zone {
-  border: 1px dashed var(--border-light);
+  border: 2px dashed var(--border-light);
   background-color: var(--bg-card);
-  border-radius: var(--radius-sm);
-  padding: 20px 14px;
+  border-radius: var(--radius-md);
+  padding: 22px 16px;
   text-align: center;
   cursor: pointer;
   transition: var(--transition-fast);
+  box-shadow: var(--shadow-sm);
 }
 
 .upload-zone:hover {
@@ -702,24 +742,25 @@ body {
 }
 
 .upload-icon {
-  font-size: 1.8rem;
+  font-size: 2rem;
   color: var(--brand-primary);
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 
 .upload-text {
-  font-size: 0.85rem;
+  font-size: 0.88rem;
   font-weight: 700;
-  margin-bottom: 2px;
+  color: var(--text-main);
+  margin-bottom: 3px;
 }
 
 .upload-subtext {
-  font-size: 0.74rem;
+  font-size: 0.76rem;
   color: var(--text-muted);
 }
 
 /* ==========================================================================
-   MODAL OVERLAY & DETAILED POPUP WINDOW
+   MODALS
    ========================================================================== */
 
 .modal-overlay {
@@ -728,7 +769,7 @@ body {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(15, 13, 12, 0.88);
+  background-color: rgba(15, 23, 42, 0.45);
   backdrop-filter: blur(4px);
   z-index: 9999;
   display: none !important;
@@ -745,15 +786,15 @@ body {
 
 .modal-container {
   background-color: var(--bg-sidebar);
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   width: 100%;
-  max-width: 620px;
+  max-width: 640px;
   max-height: 90vh;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
-  padding: 16px;
+  box-shadow: var(--shadow-lg);
+  padding: 20px;
   overflow-y: auto;
 }
 
@@ -762,18 +803,18 @@ body {
   align-items: center;
   justify-content: space-between;
   border-bottom: 1px solid var(--border-color);
-  padding-bottom: 10px;
-  margin-bottom: 12px;
+  padding-bottom: 12px;
+  margin-bottom: 14px;
 }
 
 .modal-title-group {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
 .modal-title {
-  font-size: 1rem;
+  font-size: 1.05rem;
   font-weight: 800;
   color: var(--text-main);
 }
@@ -782,7 +823,7 @@ body {
   background: transparent;
   border: none;
   color: var(--text-muted);
-  font-size: 1.4rem;
+  font-size: 1.5rem;
   line-height: 1;
   cursor: pointer;
 }
@@ -793,8 +834,8 @@ body {
 
 .modal-footer {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   border-top: 1px solid var(--border-color);
-  padding-top: 10px;
-  margin-top: 12px;
+  padding-top: 12px;
+  margin-top: 14px;
 }

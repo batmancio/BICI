@@ -3,6 +3,7 @@
    ========================================================================== */
 
 import { getInstantCitySuggestions, ITALIAN_CITIES } from './cityData.js';
+import { ElevationEngine } from './elevationEngine.js';
 
 export class RouteExplorerEngine {
   constructor() {
@@ -214,13 +215,13 @@ export class RouteExplorerEngine {
     const route4Raw = raw4 || raw1;
     const route5Raw = raw5 || raw1;
 
-    // Palette colori ad alto contrasto per i tracciati
+    // Palette colori ad alto contrasto per i tracciati (Option B: Clean & Outdoors)
     const routes = await Promise.all([
-      this.buildRouteObject('opt-1', 'Arteria Principale Diretta (OSRM)', '#0ea5e9', route1Raw, startCoords, endCoords, 'Strada Principale', routeMode),
+      this.buildRouteObject('opt-1', 'Arteria Principale Diretta (OSRM)', '#0066FF', route1Raw, startCoords, endCoords, 'Strada Principale', routeMode),
       this.buildRouteObject('opt-2', 'Variante Secondaria Vicinale', '#10b981', route2Raw, startCoords, endCoords, 'Strade Vicinali', routeMode),
-      this.buildRouteObject('opt-3', 'Percorso Collinare & Salite', '#a855f7', route3Raw, startCoords, endCoords, 'Salita & Tornanti', routeMode),
-      this.buildRouteObject('opt-4', 'Tracciato Panoramico Esterno', '#f59e0b', route4Raw, startCoords, endCoords, 'Provinciali Panoramiche', routeMode),
-      this.buildRouteObject('opt-5', 'Giro Esteso Fondo Pro', '#f43f5e', route5Raw, startCoords, endCoords, 'Percorso Lungo', routeMode)
+      this.buildRouteObject('opt-3', 'Percorso Collinare & Salite', '#8b5cf6', route3Raw, startCoords, endCoords, 'Salita & Tornanti', routeMode),
+      this.buildRouteObject('opt-4', 'Tracciato Panoramico Esterno', '#c85a32', route4Raw, startCoords, endCoords, 'Provinciali Panoramiche', routeMode),
+      this.buildRouteObject('opt-5', 'Giro Esteso Fondo Pro', '#dc2626', route5Raw, startCoords, endCoords, 'Percorso Lungo', routeMode)
     ]);
 
     return routes;
@@ -520,64 +521,20 @@ export class RouteExplorerEngine {
         const data = await res.json();
         if (data && data.elevation && data.elevation.length === sampledCoords.length) {
           const rawElevations = data.elevation;
-          
-          // Filtro a media mobile pesata per rimuovere il rumore di campionamento DEM
-          const smoothed = [];
-          for (let i = 0; i < rawElevations.length; i++) {
-            if (i === 0) {
-              smoothed.push((rawElevations[0] * 2 + rawElevations[1]) / 3);
-            } else if (i === rawElevations.length - 1) {
-              smoothed.push((rawElevations[i] * 2 + rawElevations[i - 1]) / 3);
-            } else {
-              smoothed.push((rawElevations[i - 1] + rawElevations[i] * 2 + rawElevations[i + 1]) / 4);
-            }
-          }
-
-          let gainM = 0;
-          let lossM = 0;
-          let maxGrade = 0;
-          let maxElev = -9999;
-          const profile = [];
-
           const distStep = totalDistanceKm / (sampledCoords.length - 1);
 
-          for (let i = 0; i < sampledCoords.length; i++) {
-            const currentElev = Math.round(smoothed[i]);
-            const currentDistKm = parseFloat((i * distStep).toFixed(1));
-            if (currentElev > maxElev) maxElev = currentElev;
+          const rawPoints = rawElevations.map((ele, i) => ({
+            distanceKm: parseFloat((i * distStep).toFixed(1)),
+            elevationM: ele
+          }));
 
-            let segmentGrade = 0;
-            if (i > 0) {
-              const prevElev = Math.round(smoothed[i - 1]);
-              const diff = currentElev - prevElev;
-              
-              if (diff >= 1.2) gainM += diff;
-              else if (diff <= -1.2) lossM += Math.abs(diff);
+          const metrics = ElevationEngine.processElevationProfile(rawPoints, {
+            minThresholdM: 2.0,
+            smoothingPasses: 2,
+            isRawGpx: false
+          });
 
-              const segmentDistMeters = distStep * 1000;
-              if (segmentDistMeters > 0) {
-                segmentGrade = parseFloat(((diff / segmentDistMeters) * 100).toFixed(1));
-                if (Math.abs(segmentGrade) > maxGrade) maxGrade = Math.abs(segmentGrade);
-              }
-            }
-
-            profile.push({
-              distanceKm: currentDistKm,
-              elevationM: currentElev,
-              slopeGrade: segmentGrade
-            });
-          }
-
-          const avgGrade = totalDistanceKm > 0 ? parseFloat((gainM / (totalDistanceKm * 10)).toFixed(1)) : 1.0;
-
-          return {
-            elevationProfile: profile,
-            elevationGainM: Math.round(gainM) || 140,
-            elevationLossM: Math.round(lossM) || 135,
-            maxElevationM: maxElev > -9000 ? maxElev : 210,
-            maxGradePercent: Math.min(22, Math.max(1.5, maxGrade)),
-            avgGradePercent: avgGrade
-          };
+          return metrics;
         }
       }
     } catch (err) {
