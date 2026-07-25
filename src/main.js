@@ -105,6 +105,10 @@ function initApp() {
   const elevationPanel = document.getElementById('elevationPanel');
   const btnToggleChart = document.getElementById('btnToggleChart');
 
+  const btnToggleSidebar = document.getElementById('btnToggleSidebar');
+  const btnHeaderToggleSidebar = document.getElementById('btnHeaderToggleSidebar');
+  const appSidebar = document.getElementById('appSidebar');
+
   const navBtns = document.querySelectorAll('.nav-btn');
   const tabPanes = {
     explorer: document.getElementById('tabExplorer'),
@@ -282,6 +286,19 @@ function initApp() {
     });
   }
 
+  const handleKeyEnter = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const dropdown = e.target.id === 'floatingInputStart' ? floatingStartAutocomplete : floatingEndAutocomplete;
+      if (dropdown) dropdown.style.display = 'none';
+      customWaypoints = [];
+      clickState = 'start';
+      handleCalculateRoutes();
+    }
+  };
+  if (floatingInputStart) floatingInputStart.addEventListener('keydown', handleKeyEnter);
+  if (floatingInputEnd) floatingInputEnd.addEventListener('keydown', handleKeyEnter);
+
   async function handleCalculateRoutes() {
     try {
       const startVal = floatingInputStart?.value.trim() || '';
@@ -405,14 +422,6 @@ function initApp() {
       handleCalculateRoutes();
     }
   });
-
-  if (btnCalculateRoutes) {
-    btnCalculateRoutes.addEventListener('click', () => {
-      customWaypoints = [];
-      clickState = 'start';
-      handleCalculateRoutes();
-    });
-  }
 
   const routeDetailModal = document.getElementById('routeDetailModal');
   const btnCloseModal = document.getElementById('btnCloseModal');
@@ -747,10 +756,6 @@ function initApp() {
       }
     });
   }
-
-  const btnToggleSidebar = document.getElementById('btnToggleSidebar');
-  const btnHeaderToggleSidebar = document.getElementById('btnHeaderToggleSidebar');
-  const appSidebar = document.getElementById('appSidebar');
 
   const toggleSidebarAction = () => {
     if (appSidebar) {

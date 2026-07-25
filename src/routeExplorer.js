@@ -223,11 +223,12 @@ export class RouteExplorerEngine {
     // Estrarre eventuali rotte alternative ritornate nativamente da OSRM (raw1.alternatives)
     const alt1 = (raw1 && raw1.alternatives && raw1.alternatives[0]) ? raw1.alternatives[0] : null;
     const alt2 = (raw1 && raw1.alternatives && raw1.alternatives[1]) ? raw1.alternatives[1] : null;
+    const alt3 = (raw1 && raw1.alternatives && raw1.alternatives[2]) ? raw1.alternatives[2] : null;
 
     const route1Raw = raw1;
-    const route2Raw = alt1 || raw2 || raw1;
-    const route3Raw = alt2 || raw3 || raw1;
-    const route4Raw = raw4 || raw1;
+    const route2Raw = raw2 || alt1 || raw1;
+    const route3Raw = raw3 || alt2 || raw1;
+    const route4Raw = raw4 || alt3 || raw1;
     const route5Raw = raw5 || raw1;
 
     // Palette colori Strade Bianche (Terracotta, Mint, Oro, Rosso Ruggine)
@@ -435,7 +436,7 @@ export class RouteExplorerEngine {
 
     // Multiple public routing endpoints (OpenStreetMap Germany Bike & Standard OSRM Driving)
     const endpoints = [
-      `https://routing.openstreetmap.de/routed-bike/route/v1/biking/${waypointsStr}?overview=full&geometries=geojson&steps=true${altParam}${straightParam}`,
+      `https://routing.openstreetmap.de/routed-bike/route/v1/driving/${waypointsStr}?overview=full&geometries=geojson&steps=true${altParam}${straightParam}`,
       `https://routing.openstreetmap.de/routed-car/route/v1/driving/${waypointsStr}?overview=full&geometries=geojson&steps=true${altParam}${straightParam}`,
       `https://router.project-osrm.org/route/v1/driving/${waypointsStr}?overview=full&geometries=geojson&steps=true${altParam}${straightParam}`
     ];
@@ -516,7 +517,7 @@ export class RouteExplorerEngine {
 
     if (!coords || coords.length < 2) return defaultRes;
 
-    const sampleSize = Math.min(80, Math.max(30, coords.length));
+    const sampleSize = Math.min(35, Math.max(20, coords.length));
     const sampledCoords = [];
     const stepIndex = (coords.length - 1) / (sampleSize - 1);
 
