@@ -6,47 +6,50 @@
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
 :root {
-  /* Clean & Outdoors Palette */
-  --bg-main: #F8F9FA;          /* Grigio chiarissimo */
-  --bg-sidebar: #FFFFFF;       /* Bianco puro Surface */
-  --bg-header: #FFFFFF;        /* Bianco puro Header Surface */
-  --bg-card: #FFFFFF;          /* Bianco puro Card Surface */
-  --bg-card-hover: #F1F5F9;    /* Soft Slate Hover */
-  --bg-input: #F8FAFC;         /* Light Input Surface */
-  --bg-pill: #E2E8F0;
-  --bg-pill-active: #C85A32;   /* Terra bruciata Active */
+  /* Dark Luxury Palette: Black, Blue, Gold */
+  --bg-main: #0B0E14;          /* Deep Onyx Black */
+  --bg-sidebar: #121722;       /* Slate Dark Surface */
+  --bg-header: #0E121B;        /* Header Surface */
+  --bg-card: #171E2D;          /* Dark Card Surface */
+  --bg-card-hover: #21293B;    /* Card Hover Surface */
+  --bg-input: #161D2B;         /* Input Surface */
+  --bg-pill: #1E2738;
+  --bg-pill-active: #D4AF37;   /* Gold Active */
   
-  --border-color: #E2E8F0;     /* Crisp Architectural Light Border */
-  --border-light: #CBD5E1;
-  --border-focus: #C85A32;     /* Terra bruciata Focus */
+  --border-color: #242E42;     /* Crisp Dark Border */
+  --border-light: #334155;
+  --border-focus: #D4AF37;     /* Gold Focus */
   
-  /* Brand & Accent */
-  --brand-primary: #C85A32;    /* Terra bruciata (Primary Brand Accent) */
-  --brand-primary-hover: #B24D28;
-  --brand-accent: #0066FF;     /* Blu elettrico ad alta visibilità (Path Trace) */
+  /* Brand & Accent: Blue & Gold */
+  --brand-primary: #2563EB;    /* Royal Blue Primary Accent */
+  --brand-primary-hover: #1D4ED8;
+  --brand-accent: #60A5FA;     /* Electric Sky Blue */
+  --brand-gold: #D4AF37;       /* Metallic Gold */
+  --brand-gold-hover: #B89628;
+  --brand-gold-light: rgba(212, 175, 55, 0.12);
   
-  /* Technical Slope Colors */
-  --slope-flat: #10B981;       /* Mint Green <3% */
-  --slope-mild: #0066FF;       /* Electric Blue 3-6% */
-  --slope-mod: #8B5CF6;        /* Violet 6-9% */
-  --slope-steep: #C85A32;      /* Terra Bruciata 9-12% */
-  --slope-wall: #991B1B;       /* Deep Burgundy >12% */
+  /* Technical Slope Colors - Adapted for Dark Contrast */
+  --slope-flat: #10B981;       /* Emerald Green <3% */
+  --slope-mild: #38BDF8;       /* Azure Blue 3-6% */
+  --slope-mod: #F59E0B;        /* Amber Gold 6-9% */
+  --slope-steep: #F97316;      /* Orange 9-12% */
+  --slope-wall: #EF4444;       /* Crimson Red >12% */
 
   /* High-Contrast Technical Typography */
-  --text-main: #1A1D20;        /* Quasi nero per contrasto tipografico netto */
-  --text-muted: #64748B;       /* Muted Slate Text */
-  --text-dim: #94A3B8;         /* Dim Slate Text */
+  --text-main: #F8FAFC;        /* Crisp Light Slate / White */
+  --text-muted: #94A3B8;       /* Muted Slate Text */
+  --text-dim: #64748B;         /* Dim Slate Text */
 
   /* Shadow & Elevation System */
-  --shadow-sm: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
-  --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
-  --shadow-lg: 0 10px 25px rgba(0,0,0,0.12);
+  --shadow-sm: 0 2px 5px rgba(0,0,0,0.4);
+  --shadow-md: 0 4px 14px rgba(0,0,0,0.6);
+  --shadow-lg: 0 10px 30px rgba(0,0,0,0.8);
   
   /* Geometry & Typography */
-  --radius-xs: 3px;
+  --radius-xs: 4px;
   --radius-sm: 6px;
-  --radius-md: 8px;
-  --radius-lg: 10px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
   --radius-full: 6px;
   
   --font-main: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -109,14 +112,14 @@ body {
   width: 34px;
   height: 34px;
   border-radius: var(--radius-sm);
-  background-color: #FFFFFF;
-  border: 1px solid var(--border-color);
+  background-color: var(--bg-sidebar);
+  border: 1px solid var(--brand-gold);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 2px;
   overflow: hidden;
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 0 10px rgba(212, 175, 55, 0.25);
   flex-shrink: 0;
 }
 
@@ -127,8 +130,9 @@ body {
 }
 
 .brand-title span {
-  color: var(--brand-primary);
+  color: var(--brand-gold);
   font-weight: 700;
+  text-shadow: 0 0 10px rgba(212, 175, 55, 0.3);
 }
 
 .nav-tabs {
@@ -160,10 +164,10 @@ body {
 }
 
 .nav-btn.active {
-  background-color: var(--brand-primary);
+  background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
   color: #FFFFFF;
-  border-color: var(--brand-primary);
-  box-shadow: 0 2px 6px rgba(200, 90, 50, 0.25);
+  border-color: var(--brand-gold);
+  box-shadow: 0 2px 10px rgba(37, 99, 235, 0.4);
 }
 
 .header-actions {
@@ -187,14 +191,15 @@ body {
 }
 
 .btn-primary {
-  background-color: var(--brand-primary);
+  background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
   color: #FFFFFF;
-  border-color: var(--brand-primary);
-  box-shadow: 0 2px 6px rgba(200, 90, 50, 0.22);
+  border-color: var(--brand-accent);
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.4);
 }
 
 .btn-primary:hover {
-  background-color: var(--brand-primary-hover);
+  background: linear-gradient(135deg, #1D4ED8 0%, #1E40AF 100%);
+  border-color: var(--brand-gold);
 }
 
 .btn-secondary {
@@ -404,9 +409,9 @@ body {
 }
 
 .input-field:focus {
-  border-color: var(--brand-primary);
-  background-color: #FFFFFF;
-  box-shadow: 0 0 0 3px rgba(200, 90, 50, 0.12);
+  border-color: var(--brand-gold);
+  background-color: var(--bg-card-hover);
+  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.2);
 }
 
 .autocomplete-dropdown {
@@ -445,7 +450,7 @@ body {
 }
 
 .match-highlight {
-  color: var(--brand-primary);
+  color: var(--brand-gold);
   font-weight: 700;
 }
 
@@ -476,10 +481,10 @@ body {
 }
 
 .spec-card.selected {
-  border: 1px solid var(--brand-primary);
-  border-left: 4px solid var(--brand-primary);
-  background-color: #FFF8F6;
-  box-shadow: var(--shadow-md);
+  border: 1px solid var(--brand-gold);
+  border-left: 4px solid var(--brand-gold);
+  background: linear-gradient(90deg, rgba(212, 175, 55, 0.1) 0%, var(--bg-card) 100%);
+  box-shadow: 0 4px 16px rgba(212, 175, 55, 0.18);
 }
 
 .spec-card-header {
@@ -517,15 +522,15 @@ body {
 }
 
 .badge-low-traffic {
-  background-color: rgba(16, 185, 129, 0.12);
-  color: #059669;
-  border: 1px solid rgba(16, 185, 129, 0.3);
+  background-color: rgba(16, 185, 129, 0.15);
+  color: #34D399;
+  border: 1px solid rgba(16, 185, 129, 0.35);
 }
 
 .badge-med-traffic {
-  background-color: rgba(200, 90, 50, 0.12);
-  color: var(--brand-primary);
-  border: 1px solid rgba(200, 90, 50, 0.3);
+  background-color: rgba(212, 175, 55, 0.15);
+  color: var(--brand-gold);
+  border: 1px solid rgba(212, 175, 55, 0.4);
 }
 
 .badge-high-traffic {
@@ -637,7 +642,8 @@ body {
 
 .floating-search-overlay.hidden {
   opacity: 0;
-  pointer-events: none;
+  pointer-events: none !important;
+  display: none !important;
   transform: translateY(-10px);
 }
 
@@ -718,15 +724,15 @@ body {
 }
 
 .filter-chip.active, .folder-chip.active {
-  background-color: var(--brand-primary);
+  background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
   color: #FFFFFF;
-  border-color: var(--brand-primary);
-  box-shadow: 0 2px 6px rgba(200, 90, 50, 0.25);
+  border-color: var(--brand-gold);
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.4);
 }
 
 /* Upload Dropzone */
 .upload-zone {
-  border: 2px dashed var(--border-light);
+  border: 2px dashed var(--brand-gold);
   background-color: var(--bg-card);
   border-radius: var(--radius-md);
   padding: 22px 16px;
@@ -739,11 +745,12 @@ body {
 .upload-zone:hover {
   border-color: var(--brand-primary);
   background-color: var(--bg-card-hover);
+  box-shadow: 0 0 15px rgba(212, 175, 55, 0.15);
 }
 
 .upload-icon {
   font-size: 2rem;
-  color: var(--brand-primary);
+  color: var(--brand-gold);
   margin-bottom: 8px;
 }
 

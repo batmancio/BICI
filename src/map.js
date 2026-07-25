@@ -33,17 +33,17 @@ export class MapManager {
         attributionControl: false
       }).setView([41.5956, 12.6525], 11);
 
-      // Mappa Stradale OSM Standard
-      const cycleTileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '&copy; OpenStreetMap contributors'
-      });
-
-      // Mappa Scura CARTO Rastertiles
+      // Mappa Scura CARTO Rastertiles (Default per Dark Theme)
       const darkTileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}{r}.png', {
         maxZoom: 19,
         subdomains: 'abcd',
         attribution: '&copy; OpenStreetMap &copy; CARTO'
+      });
+
+      // Mappa Stradale OSM Standard
+      const cycleTileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap contributors'
       });
 
       // Mappa Ciclismo CyclOSM
@@ -52,11 +52,11 @@ export class MapManager {
         attribution: '&copy; OpenStreetMap &copy; CyclOSM'
       });
 
-      cycleTileLayer.addTo(this.map);
+      darkTileLayer.addTo(this.map);
 
       const baseMaps = {
-        "Mappa Stradale / OSM (Consigliata)": cycleTileLayer,
-        "Mappa Scura Pro": darkTileLayer,
+        "Mappa Scura Pro (Consigliata)": darkTileLayer,
+        "Mappa Stradale / OSM": cycleTileLayer,
         "Mappa Ciclismo / CyclOSM": cyclOsmTileLayer
       };
       L.control.layers(baseMaps, null, { position: 'topright' }).addTo(this.map);
@@ -111,14 +111,14 @@ export class MapManager {
 
     const startIcon = L.divIcon({
       className: 'custom-map-icon start-icon',
-      html: `<div style="background: #10b981; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.4);"><i class="fa-solid fa-play" style="font-size: 11px; margin-left: 2px;"></i></div>`,
+      html: `<div style="background: #10b981; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 2px solid #D4AF37; box-shadow: 0 0 10px rgba(212, 175, 55, 0.6);"><i class="fa-solid fa-play" style="font-size: 11px; margin-left: 2px;"></i></div>`,
       iconSize: [28, 28],
       iconAnchor: [14, 14]
     });
 
     const endIcon = L.divIcon({
       className: 'custom-map-icon end-icon',
-      html: `<div style="background: #ef4444; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.4);"><i class="fa-solid fa-flag-checkered" style="font-size: 12px;"></i></div>`,
+      html: `<div style="background: #ef4444; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 2px solid #D4AF37; box-shadow: 0 0 10px rgba(212, 175, 55, 0.6);"><i class="fa-solid fa-flag-checkered" style="font-size: 12px;"></i></div>`,
       iconSize: [28, 28],
       iconAnchor: [14, 14]
     });
@@ -132,7 +132,7 @@ export class MapManager {
       waypoints.forEach((wp, idx) => {
         const wpIcon = L.divIcon({
           className: 'custom-map-icon waypoint-icon',
-          html: `<div style="background: #8b5cf6; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 11px; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.4);">${idx + 1}</div>`,
+          html: `<div style="background: #2563EB; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 11px; border: 2px solid #D4AF37; box-shadow: 0 0 8px rgba(37, 99, 235, 0.6);">${idx + 1}</div>`,
           iconSize: [24, 24],
           iconAnchor: [12, 12]
         });
@@ -146,7 +146,7 @@ export class MapManager {
     const polyline = L.polyline(coordinates, {
       color: color,
       weight: isSelected ? 6 : 4,
-      opacity: isSelected ? 0.9 : 0.4,
+      opacity: isSelected ? 0.95 : 0.45,
       smoothFactor: 1
     }).addTo(this.map);
 
@@ -234,10 +234,10 @@ export class MapManager {
 
   getSlopeColor(grade) {
     if (grade < 3) return '#10b981';      // Emerald Mint (<3%)
-    if (grade < 6) return '#38bdf8';      // Soft Sky Azure (3-6%)
-    if (grade < 9) return '#a855f7';      // Lavender Indigo (6-9%)
-    if (grade < 12) return '#f43f5e';     // Soft Crimson Rose (9-12%)
-    return '#881337';                     // Deep Burgundy (>12%)
+    if (grade < 6) return '#38bdf8';      // Azure Blue (3-6%)
+    if (grade < 9) return '#f59e0b';      // Amber Gold (6-9%)
+    if (grade < 12) return '#f97316';     // Vivid Orange (9-12%)
+    return '#ef4444';                     // Crimson Red (>12%)
   }
 
   fitBoundsToRoutes() {
@@ -250,7 +250,7 @@ export class MapManager {
     if (!this.hoverMarker) {
       const hoverIcon = L.divIcon({
         className: 'hover-point-icon',
-        html: `<div style="background: #0066FF; width: 14px; height: 14px; border-radius: 50%; border: 2.5px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.3);"></div>`,
+        html: `<div style="background: #D4AF37; width: 14px; height: 14px; border-radius: 50%; border: 2.5px solid #2563EB; box-shadow: 0 0 10px rgba(212,175,55,0.8);"></div>`,
         iconSize: [14, 14],
         iconAnchor: [7, 7]
       });

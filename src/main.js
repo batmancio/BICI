@@ -7,6 +7,7 @@ import { RouteExplorerEngine } from './routeExplorer.js';
 import { PlannerManager } from './planner.js';
 import { FitParserEngine } from './fitParser.js';
 import { AnalyticsManager } from './analysis.js';
+import { StravaSyncEngine } from './stravaSync.js';
 
 class FavoritesManager {
   constructor() {
@@ -87,9 +88,13 @@ function initApp() {
   const fitParserEngine = new FitParserEngine();
   const analyticsManager = new AnalyticsManager();
   const favoritesManager = new FavoritesManager();
+  const stravaSyncEngine = new StravaSyncEngine();
 
   let activeRoutes = [];
   let selectedRouteId = null;
+  let customWaypoints = [];
+  let currentRouteMode = 'oneway';
+  let clickState = 'start';
 
   const btnCalculateRoutes = document.getElementById('btnCalculateRoutes');
   const routeCardsContainer = document.getElementById('routeCardsContainer');
@@ -643,7 +648,7 @@ function initApp() {
 
   dropZone.addEventListener('dragover', (e) => {
     e.preventDefault();
-    dropZone.style.borderColor = 'var(--brand-orange)';
+    dropZone.style.borderColor = 'var(--brand-gold)';
   });
 
   dropZone.addEventListener('drop', (e) => {
@@ -669,10 +674,10 @@ function initApp() {
       document.getElementById('resEffort').textContent = metrics.effortRating;
 
       mapManager.clearRoutes();
-      mapManager.renderRoutePolyline(metrics.coords, '#0066FF', true, 'user-workout');
+      mapManager.renderRoutePolyline(metrics.coords, '#2563EB', true, 'user-workout');
       mapManager.fitBoundsToRoutes();
 
-      analyticsManager.renderElevationChart(elevationCanvas, metrics.elevationProfile, '#0066FF');
+      analyticsManager.renderElevationChart(elevationCanvas, metrics.elevationProfile, '#2563EB');
 
       document.querySelector('.nav-btn[data-tab="analysis"]').click();
 
@@ -681,33 +686,36 @@ function initApp() {
     }
   }
 
-  btnConnectStrava.addEventListener('click', () => {
-    const activities = stravaSyncEngine.connectStravaAccount();
-    const listContainer = document.getElementById('stravaActivitiesList');
-    listContainer.innerHTML = '';
-
-    activities.forEach(act => {
-      const item = document.createElement('div');
-      item.className = 'spec-card';
-      item.innerHTML = `
-        <div class="spec-card-header">
-          <div class="route-name" style="font-size: 0.9rem;">${act.name}</div>
-          <span class="badge badge-low-traffic">${act.date}</span>
-        </div>
-        <div style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 8px;">
-          Dispositivo: <strong style="color: var(--brand-orange);">${act.device}</strong>
-        </div>
-        <div class="spec-metrics-grid">
-          <div class="metric-box"><div class="metric-val">${act.distanceKm} <span>km</span></div></div>
-          <div class="metric-box"><div class="metric-val">${act.elevationGainM} <span>m</span></div></div>
-          <div class="metric-box"><div class="metric-val">${act.avgSpeedKmH} <span>km/h</span></div></div>
-        </div>
-      `;
-      listContainer.appendChild(item);
+  const btnConnectStrava = document.getElementById('btnConnectStrava');
+  if (btnConnectStrava) {
+    btnConnectStrava.addEventListener('click', () => {
+      const activities = stravaSyncEngine.connectStravaAccount();
+      const listContainer = document.getElementById('stravaActivitiesList');
+      if (listContainer) {
+        listContainer.innerHTML = '';
+        activities.forEach(act => {
+          const item = document.createElement('div');
+          item.className = 'spec-card';
+          item.innerHTML = `
+            <div class="spec-card-header">
+              <div class="route-name" style="font-size: 0.9rem;">${act.name}</div>
+              <span class="badge badge-low-traffic">${act.date}</span>
+            </div>
+            <div style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 8px;">
+              Dispositivo: <strong style="color: var(--brand-primary);">${act.device}</strong>
+            </div>
+            <div class="spec-metrics-grid">
+              <div class="metric-box"><div class="metric-val">${act.distanceKm} <span>km</span></div></div>
+              <div class="metric-box"><div class="metric-val">${act.elevationGainM} <span>m</span></div></div>
+              <div class="metric-box"><div class="metric-val">${act.avgSpeedKmH} <span>km/h</span></div></div>
+            </div>
+          `;
+          listContainer.appendChild(item);
+        });
+      }
+      alert("Account Strava collegato con successo! Sincronizzazione uscite Bryton completata.");
     });
-
-    alert("Account Strava collegato con successo! Sincronizzazione uscite Bryton completata.");
-  });
+  }
 
   const toggleChartPanel = (e) => {
     if (e) e.stopPropagation();
@@ -735,14 +743,22 @@ function initApp() {
     });
   }
 
+  function syncOverlayVisibility() {
+    if (appSidebar && floatingSearchOverlay) {
+      const isCollapsed = appSidebar.classList.contains('collapsed');
+      floatingSearchOverlay.classList.toggle('hidden', !isCollapsed);
+    }
+  }
+
+  // Sincronizza stato iniziale all'avvio
+  syncOverlayVisibility();
+
   const btnToggleSidebar = document.getElementById('btnToggleSidebar');
   const appSidebar = document.getElementById('appSidebar');
   if (btnToggleSidebar && appSidebar) {
     btnToggleSidebar.addEventListener('click', () => {
-      const isCollapsed = appSidebar.classList.toggle('collapsed');
-      if (floatingSearchOverlay) {
-        floatingSearchOverlay.classList.toggle('hidden', !isCollapsed);
-      }
+      appSidebar.classList.toggle('collapsed');
+      syncOverlayVisibility();
       setTimeout(() => mapManager.refreshMapSize(), 230);
     });
   }
