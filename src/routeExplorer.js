@@ -202,14 +202,16 @@ export class RouteExplorerEngine {
     const dLat = (routeMode === 'loop') ? 0.04 : endCoords[0] - startCoords[0];
     const dLng = (routeMode === 'loop') ? 0.04 : endCoords[1] - startCoords[1];
 
-    const kmRatio = Math.max(1.0, targetKm / Math.max(10, directDistKm));
-    const offsetScale = Math.min(0.25, 0.04 * kmRatio);
+    // Calcola deviazioni proporzionali alla distanza effettiva (max 15-20% di scostamento per varianti naturali)
+    const effectiveTargetKm = Math.min(targetKm, Math.max(directDistKm * 1.4, directDistKm + 5));
+    const kmRatio = Math.max(1.0, effectiveTargetKm / Math.max(5, directDistKm));
+    const offsetScale = Math.min(0.04, Math.max(0.008, 0.012 * (directDistKm / 10) * kmRatio));
 
-    // Vias per varianti
-    const via2 = [midLat + dLng * offsetScale * 0.8 + 0.01, midLng - dLat * offsetScale * 0.8 - 0.01]; 
-    const via3 = [midLat - dLng * offsetScale * 1.2 - 0.02, midLng + dLat * offsetScale * 1.2 + 0.02]; 
-    const via4 = [midLat + dLng * offsetScale * 1.6 + 0.03, midLng - dLat * offsetScale * 1.6 - 0.02]; 
-    const via5 = [midLat - dLng * offsetScale * 2.2 - 0.04, midLng + dLat * offsetScale * 2.2 + 0.04]; 
+    // Vias per varianti locali verosimili
+    const via2 = [midLat + dLng * offsetScale * 0.6, midLng - dLat * offsetScale * 0.6]; 
+    const via3 = [midLat - dLng * offsetScale * 0.8, midLng + dLat * offsetScale * 0.8]; 
+    const via4 = [midLat + dLng * offsetScale * 1.2, midLng - dLat * offsetScale * 1.2]; 
+    const via5 = [midLat - dLng * offsetScale * 1.5, midLng + dLat * offsetScale * 1.5]; 
 
     // Chiamata OSRM con alternative nativa e waypoints personalizzati
     const [raw1, raw2, raw3, raw4, raw5] = await Promise.all([
