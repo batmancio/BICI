@@ -7,7 +7,7 @@ export class AnalyticsManager {
     this.chartInstance = null;
   }
 
-  renderElevationChart(containerCanvas, profileData, routeColor = '#5B8DEF', onPointHover = null) {
+  renderElevationChart(containerCanvas, profileData, routeColor = '#CE8946', onPointHover = null) {
     if (!containerCanvas) return;
 
     if (this.chartInstance) {
@@ -18,10 +18,10 @@ export class AnalyticsManager {
     const labels = profileData.map(p => `${p.distanceKm} km`);
     const elevations = profileData.map(p => p.elevationM);
 
-    const activeColor = routeColor || '#5B8DEF';
+    const activeColor = routeColor || '#CE8946';
 
     const gradient = ctx.createLinearGradient(0, 0, 0, 160);
-    gradient.addColorStop(0, activeColor + '44');
+    gradient.addColorStop(0, activeColor + '33');
     gradient.addColorStop(1, activeColor + '00');
 
     this.chartInstance = new Chart(ctx, {
@@ -56,10 +56,10 @@ export class AnalyticsManager {
         plugins: {
           legend: { display: false },
           tooltip: {
-            backgroundColor: '#202430',
-            titleColor: '#F1F5F9',
-            bodyColor: '#8BB4F8',
-            borderColor: '#343B4E',
+            backgroundColor: '#ffffff',
+            titleColor: '#2B2118',
+            bodyColor: activeColor,
+            borderColor: '#E6DFB8',
             borderWidth: 1,
             padding: 10,
             displayColors: false,
@@ -71,12 +71,12 @@ export class AnalyticsManager {
         },
         scales: {
           x: {
-            grid: { color: 'rgba(255, 255, 255, 0.07)' },
-            ticks: { color: '#A0AEC0', font: { size: 9 }, maxTicksLimit: 10, maxRotation: 0, padding: 2 }
+            grid: { color: 'rgba(43, 33, 24, 0.08)' },
+            ticks: { color: '#6C5E53', font: { size: 9 }, maxTicksLimit: 10, maxRotation: 0, padding: 2 }
           },
           y: {
-            grid: { color: 'rgba(255, 255, 255, 0.07)' },
-            ticks: { color: '#A0AEC0', font: { size: 9 } }
+            grid: { color: 'rgba(43, 33, 24, 0.08)' },
+            ticks: { color: '#6C5E53', font: { size: 9 } }
           }
         },
         onHover: (event, activeElements) => {
@@ -89,7 +89,7 @@ export class AnalyticsManager {
     });
   }
 
-  renderPlannedRouteChart(containerCanvas, profileData, routeColor = '#5B8DEF', onPointHover = null) {
+  renderPlannedRouteChart(containerCanvas, profileData, routeColor = '#CE8946', onPointHover = null) {
     if (!containerCanvas) return;
 
     if (containerCanvas._chartInstance) {
@@ -102,10 +102,10 @@ export class AnalyticsManager {
     const elevations = profileData.map(p => p.elevationM);
     const slopes = profileData.map(p => p.slopeGrade || 0);
 
-    const activeColor = routeColor || '#5B8DEF';
+    const activeColor = routeColor || '#CE8946';
 
     const gradient = ctx.createLinearGradient(0, 0, 0, 160);
-    gradient.addColorStop(0, activeColor + '44');
+    gradient.addColorStop(0, activeColor + '33');
     gradient.addColorStop(1, activeColor + '00');
 
     const chart = new Chart(ctx, {
@@ -131,14 +131,14 @@ export class AnalyticsManager {
           {
             label: 'Pendenza Stimata (%)',
             data: slopes,
-            borderColor: '#E5C365',
+            borderColor: '#D4AF37',
             borderWidth: 1.8,
             borderDash: [4, 4],
             fill: false,
             tension: 0.3,
             pointRadius: 0,
             pointHoverRadius: 4,
-            pointHoverBackgroundColor: '#E5C365',
+            pointHoverBackgroundColor: '#D4AF37',
             yAxisID: 'ySlope'
           }
         ]
@@ -153,12 +153,12 @@ export class AnalyticsManager {
         plugins: {
           legend: {
             display: true,
-            labels: { color: '#A0AEC0', font: { size: 10 }, boxWidth: 12 }
+            labels: { color: '#6C5E53', font: { size: 10 }, boxWidth: 12 }
           },
           tooltip: {
-            backgroundColor: '#202430',
-            titleColor: '#F1F5F9',
-            borderColor: '#343B4E',
+            backgroundColor: '#ffffff',
+            titleColor: '#2B2118',
+            borderColor: '#E6DFB8',
             borderWidth: 1,
             padding: 10,
             callbacks: {
@@ -176,26 +176,26 @@ export class AnalyticsManager {
         },
         scales: {
           x: {
-            grid: { color: 'rgba(255, 255, 255, 0.07)' },
-            ticks: { color: '#A0AEC0', font: { size: 9 }, maxTicksLimit: 10, maxRotation: 0, padding: 2 }
+            grid: { color: 'rgba(43, 33, 24, 0.08)' },
+            ticks: { color: '#6C5E53', font: { size: 9 }, maxTicksLimit: 10, maxRotation: 0, padding: 2 }
           },
           yElevation: {
             type: 'linear',
             position: 'left',
-            grid: { color: 'rgba(255, 255, 255, 0.07)' },
-            ticks: { color: '#A0AEC0', font: { size: 9 } },
-            title: { display: true, text: 'Quota (m)', color: '#A0AEC0', font: { size: 9 } }
+            grid: { color: 'rgba(43, 33, 24, 0.08)' },
+            ticks: { color: '#6C5E53', font: { size: 9 } },
+            title: { display: true, text: 'Quota (m)', color: '#6C5E53', font: { size: 9 } }
           },
           ySlope: {
             type: 'linear',
             position: 'right',
             grid: { drawOnChartArea: false },
             ticks: {
-              color: '#E5C365',
+              color: '#D4AF37',
               font: { size: 9 },
               callback: (val) => `${val}%`
             },
-            title: { display: true, text: 'Pendenza (%)', color: '#E5C365', font: { size: 9 } }
+            title: { display: true, text: 'Pendenza (%)', color: '#D4AF37', font: { size: 9 } }
           }
         },
         onHover: (event, activeElements) => {

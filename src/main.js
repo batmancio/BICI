@@ -122,6 +122,12 @@ function initApp() {
         if (tabPanes[key]) tabPanes[key].style.display = (key === targetTab) ? 'block' : 'none';
       });
 
+      // Espandi sempre la sidebar quando si clicca un tab nell'header
+      const sidebarElem = document.getElementById('appSidebar');
+      if (sidebarElem) {
+        sidebarElem.classList.remove('collapsed');
+      }
+
       mapManager.refreshMapSize();
     });
   });
@@ -305,6 +311,14 @@ function initApp() {
         endCoords = [parseFloat(floatingInputEnd.dataset.lat), parseFloat(floatingInputEnd.dataset.lng)];
       }
 
+      // Se non sono presenti i dataset dall'autocomplete, esegui il geocoding del testo inserito
+      if (!startCoords && startVal) {
+        startCoords = await explorerEngine.geocodeLocation(startVal);
+      }
+      if (!endCoords && endVal && currentRouteMode !== 'loop') {
+        endCoords = await explorerEngine.geocodeLocation(endVal);
+      }
+
       routeCardsContainer.innerHTML = `
         <div style="text-align: center; padding: 36px 16px; color: var(--text-muted);">
           <i class="fa-solid fa-spinner fa-spin" style="font-size: 1.8rem; color: var(--brand-primary); margin-bottom: 12px;"></i>
@@ -352,27 +366,44 @@ function initApp() {
     }
   };
 
-  // Selezione punti cliccando sulla mappa
+  let activeInputTarget = 'start';
+  if (floatingInputStart) {
+    floatingInputStart.addEventListener('focus', () => { activeInputTarget = 'start'; });
+  }
+  if (floatingInputEnd) {
+    floatingInputEnd.addEventListener('focus', () => { activeInputTarget = 'end'; });
+  }
+
+  // Selezione intelligente dei punti cliccando sulla mappa
   mapManager.onMapClick((latLng) => {
     const formattedCoord = `${latLng.lat.toFixed(4)}, ${latLng.lng.toFixed(4)}`;
-    if (clickState === 'start') {
+    
+    // Se la partenza è vuota o l'utente ha il focus sul campo partenza
+    if (!floatingInputStart?.value.trim() || activeInputTarget === 'start') {
       if (floatingInputStart) {
         floatingInputStart.value = formattedCoord;
         floatingInputStart.dataset.lat = latLng.lat;
         floatingInputStart.dataset.lng = latLng.lng;
       }
-      clickState = 'end';
-    } else if (clickState === 'end') {
+      activeInputTarget = 'end';
+    } 
+    // Se la destinazione è vuota o l'utente ha il focus sul campo destinazione
+    else if (!floatingInputEnd?.value.trim() || activeInputTarget === 'end') {
       if (floatingInputEnd) {
         floatingInputEnd.value = formattedCoord;
         floatingInputEnd.dataset.lat = latLng.lat;
         floatingInputEnd.dataset.lng = latLng.lng;
       }
-      clickState = 'waypoint';
-    } else {
+      activeInputTarget = 'waypoint';
+    } 
+    // Altrimenti aggiungi un waypoint intermedio
+    else {
       customWaypoints.push([latLng.lat, latLng.lng]);
     }
-    handleCalculateRoutes();
+
+    if (floatingInputStart?.value.trim() && (currentRouteMode === 'loop' || floatingInputEnd?.value.trim())) {
+      handleCalculateRoutes();
+    }
   });
 
   if (btnCalculateRoutes) {
@@ -646,10 +677,10 @@ function initApp() {
       document.getElementById('resEffort').textContent = metrics.effortRating;
 
       mapManager.clearRoutes();
-      mapManager.renderRoutePolyline(metrics.coords, '#5B8DEF', true, 'user-workout');
+      mapManager.renderRoutePolyline(metrics.coords, '#CE8946', true, 'user-workout');
       mapManager.fitBoundsToRoutes();
 
-      analyticsManager.renderElevationChart(elevationCanvas, metrics.elevationProfile, '#5B8DEF');
+      analyticsManager.renderElevationChart(elevationCanvas, metrics.elevationProfile, '#CE8946');
 
       document.querySelector('.nav-btn[data-tab="analysis"]').click();
 
@@ -718,13 +749,18 @@ function initApp() {
   }
 
   const btnToggleSidebar = document.getElementById('btnToggleSidebar');
+  const btnHeaderToggleSidebar = document.getElementById('btnHeaderToggleSidebar');
   const appSidebar = document.getElementById('appSidebar');
-  if (btnToggleSidebar && appSidebar) {
-    btnToggleSidebar.addEventListener('click', () => {
+
+  const toggleSidebarAction = () => {
+    if (appSidebar) {
       appSidebar.classList.toggle('collapsed');
       setTimeout(() => mapManager.refreshMapSize(), 230);
-    });
-  }
+    }
+  };
+
+  if (btnToggleSidebar) btnToggleSidebar.addEventListener('click', toggleSidebarAction);
+  if (btnHeaderToggleSidebar) btnHeaderToggleSidebar.addEventListener('click', toggleSidebarAction);
 }
 
 if (document.readyState === 'loading') {

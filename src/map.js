@@ -33,14 +33,7 @@ export class MapManager {
         attributionControl: false
       }).setView([41.5956, 12.6525], 11);
 
-      // Mappa Scura CARTO Rastertiles (Default per Dark Theme)
-      const darkTileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}{r}.png', {
-        maxZoom: 19,
-        subdomains: 'abcd',
-        attribution: '&copy; OpenStreetMap &copy; CARTO'
-      });
-
-      // Mappa Stradale OSM Standard
+      // Mappa Stradale OSM Standard (Default per Light/Crema Theme)
       const cycleTileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
         attribution: '&copy; OpenStreetMap contributors'
@@ -52,12 +45,19 @@ export class MapManager {
         attribution: '&copy; OpenStreetMap &copy; CyclOSM'
       });
 
-      darkTileLayer.addTo(this.map);
+      // Mappa Scura CARTO Rastertiles
+      const darkTileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}{r}.png', {
+        maxZoom: 19,
+        subdomains: 'abcd',
+        attribution: '&copy; OpenStreetMap &copy; CARTO'
+      });
+
+      cycleTileLayer.addTo(this.map);
 
       const baseMaps = {
-        "Mappa Scura Pro (Consigliata)": darkTileLayer,
-        "Mappa Stradale / OSM": cycleTileLayer,
-        "Mappa Ciclismo / CyclOSM": cyclOsmTileLayer
+        "Mappa Stradale / OSM (Consigliata)": cycleTileLayer,
+        "Mappa Ciclismo / CyclOSM": cyclOsmTileLayer,
+        "Mappa Scura Pro": darkTileLayer
       };
       L.control.layers(baseMaps, null, { position: 'topright' }).addTo(this.map);
 
@@ -111,14 +111,14 @@ export class MapManager {
 
     const startIcon = L.divIcon({
       className: 'custom-map-icon start-icon',
-      html: `<div style="background: #6EE7B7; color: #181B22; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 2.5px solid #E5C365; box-shadow: 0 0 10px rgba(229, 195, 101, 0.6);"><i class="fa-solid fa-play" style="font-size: 11px; margin-left: 2px;"></i></div>`,
+      html: `<div style="background: #2D9C68; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 2.5px solid #D4AF37; box-shadow: 0 2px 6px rgba(43,33,24,0.3);"><i class="fa-solid fa-play" style="font-size: 11px; margin-left: 2px;"></i></div>`,
       iconSize: [28, 28],
       iconAnchor: [14, 14]
     });
 
     const endIcon = L.divIcon({
       className: 'custom-map-icon end-icon',
-      html: `<div style="background: #FCA5A5; color: #181B22; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 2.5px solid #E5C365; box-shadow: 0 0 10px rgba(229, 195, 101, 0.6);"><i class="fa-solid fa-flag-checkered" style="font-size: 12px;"></i></div>`,
+      html: `<div style="background: #D9381E; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 2.5px solid #D4AF37; box-shadow: 0 2px 6px rgba(43,33,24,0.3);"><i class="fa-solid fa-flag-checkered" style="font-size: 12px;"></i></div>`,
       iconSize: [28, 28],
       iconAnchor: [14, 14]
     });
@@ -132,7 +132,7 @@ export class MapManager {
       waypoints.forEach((wp, idx) => {
         const wpIcon = L.divIcon({
           className: 'custom-map-icon waypoint-icon',
-          html: `<div style="background: #5B8DEF; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 11px; border: 2px solid #E5C365; box-shadow: 0 0 8px rgba(91, 141, 239, 0.6);">${idx + 1}</div>`,
+          html: `<div style="background: #CE8946; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 11px; border: 2px solid #D4AF37; box-shadow: 0 2px 6px rgba(43,33,24,0.3);">${idx + 1}</div>`,
           iconSize: [24, 24],
           iconAnchor: [12, 12]
         });
@@ -233,11 +233,11 @@ export class MapManager {
   }
 
   getSlopeColor(grade) {
-    if (grade < 3) return '#6EE7B7';      // Pastel Mint Green (<3%)
-    if (grade < 6) return '#7DD3FC';      // Pastel Azure Blue (3-6%)
-    if (grade < 9) return '#FDE047';      // Pastel Yellow Gold (6-9%)
-    if (grade < 12) return '#FDBA74';     // Pastel Soft Peach Orange (9-12%)
-    return '#FCA5A5';                     // Pastel Rose Red (>12%)
+    if (grade < 3) return '#2D9C68';      // Mint Green (<3%)
+    if (grade < 6) return '#2563EB';      // Azure Blue (3-6%)
+    if (grade < 9) return '#D4AF37';      // Oro (6-9%)
+    if (grade < 12) return '#CE8946';     // Terracotta (9-12%)
+    return '#D9381E';                     // Rosso Ruggine (>12%)
   }
 
   fitBoundsToRoutes() {
@@ -250,7 +250,7 @@ export class MapManager {
     if (!this.hoverMarker) {
       const hoverIcon = L.divIcon({
         className: 'hover-point-icon',
-        html: `<div style="background: #E5C365; width: 14px; height: 14px; border-radius: 50%; border: 2.5px solid #5B8DEF; box-shadow: 0 0 10px rgba(229,195,101,0.8);"></div>`,
+        html: `<div style="background: #CE8946; width: 14px; height: 14px; border-radius: 50%; border: 2.5px solid #D4AF37; box-shadow: 0 2px 6px rgba(43,33,24,0.4);"></div>`,
         iconSize: [14, 14],
         iconAnchor: [7, 7]
       });

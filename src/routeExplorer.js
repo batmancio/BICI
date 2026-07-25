@@ -111,7 +111,7 @@ export class RouteExplorerEngine {
   }
 
   /**
-   * Geocode via, piazza, o città string to [lat, lng] (Precisione a livello di via)
+   * Geocode via, piazza, o città string to [lat, lng] (Precisione a livello di via / città)
    */
   async geocodeLocation(query) {
     if (!query) return null;
@@ -123,11 +123,26 @@ export class RouteExplorerEngine {
       return [parseFloat(coordMatch[1]), parseFloat(coordMatch[2])];
     }
 
-    // 2. Query Komoot Photon (Ricerca vie, numeri civici, piazze con priorità)
+    // Normalizzazione testo per ricerca locale (es: "Aprilia (Lazio)" -> "aprilia")
+    const normalized = cleanQuery.toLowerCase()
+      .replace(/\s*\([^)]*\)/g, '')
+      .replace(/,.*/, '')
+      .trim();
+
+    // 2. Controllo istantaneo nel dataset locale delle città italiane
+    if (this.knownCities[normalized]) {
+      return this.knownCities[normalized];
+    }
+    const localMatch = ITALIAN_CITIES.find(c => c.name.toLowerCase() === normalized || c.name.toLowerCase().startsWith(normalized));
+    if (localMatch) {
+      return [localMatch.lat, localMatch.lon];
+    }
+
+    // 3. Query Komoot Photon (Ricerca vie, numeri civici, piazze con priorità)
     try {
       const photonUrl = `https://photon.komoot.io/api/?q=${encodeURIComponent(cleanQuery)}&limit=1`;
       const controller = new AbortController();
-      const tid = setTimeout(() => controller.abort(), 2000);
+      const tid = setTimeout(() => controller.abort(), 2500);
       const res = await fetch(photonUrl, { signal: controller.signal });
       clearTimeout(tid);
 
@@ -142,11 +157,11 @@ export class RouteExplorerEngine {
       console.warn("Photon geocode fallback:", err);
     }
 
-    // 3. Query OpenStreetMap Nominatim per vie specifiche
+    // 4. Query OpenStreetMap Nominatim per vie specifiche
     try {
       const nomUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(cleanQuery)}&limit=1`;
       const controller = new AbortController();
-      const tid = setTimeout(() => controller.abort(), 2000);
+      const tid = setTimeout(() => controller.abort(), 2500);
       const res = await fetch(nomUrl, { headers: { 'Accept-Language': 'it,en' }, signal: controller.signal });
       clearTimeout(tid);
 
@@ -160,10 +175,10 @@ export class RouteExplorerEngine {
       console.warn("Nominatim geocode fallback:", err);
     }
 
-    // 4. Controllo SOLO UGUAGLIANZA ESATTA nella lista città locali (Nessun match parziale per non ignorare le vie!)
-    const cleanLower = cleanQuery.toLowerCase();
-    if (this.knownCities[cleanLower]) {
-      return this.knownCities[cleanLower];
+    // 5. Match parziale sul dataset locale come fallback estremo
+    const partialMatch = ITALIAN_CITIES.find(c => normalized.includes(c.name.toLowerCase()) || c.name.toLowerCase().includes(normalized));
+    if (partialMatch) {
+      return [partialMatch.lat, partialMatch.lon];
     }
 
     return null;
@@ -215,13 +230,13 @@ export class RouteExplorerEngine {
     const route4Raw = raw4 || raw1;
     const route5Raw = raw5 || raw1;
 
-    // Palette colori Pastello Soft (Blu, Oro, Sky, Yellow)
+    // Palette colori Strade Bianche (Terracotta, Mint, Oro, Rosso Ruggine)
     const routes = await Promise.all([
-      this.buildRouteObject('opt-1', 'Arteria Principale Diretta (OSRM)', '#5B8DEF', route1Raw, startCoords, endCoords, 'Strada Principale', routeMode),
-      this.buildRouteObject('opt-2', 'Variante Secondaria Vicinale', '#E5C365', route2Raw, startCoords, endCoords, 'Strade Vicinali', routeMode),
-      this.buildRouteObject('opt-3', 'Percorso Collinare & Salite', '#8BB4F8', route3Raw, startCoords, endCoords, 'Salita & Tornanti', routeMode),
-      this.buildRouteObject('opt-4', 'Tracciato Panoramico Esterno', '#F6D365', route4Raw, startCoords, endCoords, 'Provinciali Panoramiche', routeMode),
-      this.buildRouteObject('opt-5', 'Giro Esteso Fondo Pro', '#FDE047', route5Raw, startCoords, endCoords, 'Percorso Lungo', routeMode)
+      this.buildRouteObject('opt-1', 'Arteria Principale Diretta (OSRM)', '#CE8946', route1Raw, startCoords, endCoords, 'Strada Principale', routeMode),
+      this.buildRouteObject('opt-2', 'Variante Secondaria Vicinale', '#2D9C68', route2Raw, startCoords, endCoords, 'Strade Vicinali', routeMode),
+      this.buildRouteObject('opt-3', 'Percorso Collinare & Salite', '#D4AF37', route3Raw, startCoords, endCoords, 'Salita & Tornanti', routeMode),
+      this.buildRouteObject('opt-4', 'Tracciato Panoramico Esterno', '#E09A55', route4Raw, startCoords, endCoords, 'Provinciali Panoramiche', routeMode),
+      this.buildRouteObject('opt-5', 'Giro Esteso Fondo Pro', '#D9381E', route5Raw, startCoords, endCoords, 'Percorso Lungo', routeMode)
     ]);
 
     return routes;
@@ -399,33 +414,36 @@ export class RouteExplorerEngine {
    * Esegue la chiamata all'API OSRM supportando alternative e waypoints multipli
    */
   async fetchOSRMRoute(startCoords, endCoords, viaCoordsList = null, requestAlternatives = false) {
+    if (!Array.isArray(startCoords) || !Array.isArray(endCoords)) return null;
     let waypoints = [startCoords];
     if (Array.isArray(viaCoordsList)) {
-      waypoints.push(...viaCoordsList);
+      viaCoordsList.forEach(pt => {
+        if (Array.isArray(pt) && pt.length >= 2 && !isNaN(pt[0]) && !isNaN(pt[1])) {
+          waypoints.push(pt);
+        }
+      });
     }
     waypoints.push(endCoords);
+
+    // Verifico che tutti i punti siano validi
+    waypoints = waypoints.filter(pt => Array.isArray(pt) && pt.length >= 2 && !isNaN(pt[0]) && !isNaN(pt[1]));
+    if (waypoints.length < 2) return null;
 
     const waypointsStr = waypoints.map(pt => `${pt[1]},${pt[0]}`).join(';');
     const altParam = requestAlternatives ? '&alternatives=3' : '';
     const straightParam = '&continue_straight=true';
 
-    let radiusesParam = '';
-    if (waypoints.length > 2) {
-      const rads = waypoints.map((w, idx) => (idx === 0 || idx === waypoints.length - 1) ? 'unlimited' : '600');
-      radiusesParam = `&radiuses=${rads.join(';')}`;
-    }
-
     // Multiple public routing endpoints (OpenStreetMap Germany Bike & Standard OSRM Driving)
     const endpoints = [
-      `https://routing.openstreetmap.de/routed-bike/route/v1/biking/${waypointsStr}?overview=full&geometries=geojson&steps=true${altParam}${straightParam}${radiusesParam}`,
-      `https://routing.openstreetmap.de/routed-car/route/v1/driving/${waypointsStr}?overview=full&geometries=geojson&steps=true${altParam}${straightParam}${radiusesParam}`,
-      `https://router.project-osrm.org/route/v1/driving/${waypointsStr}?overview=full&geometries=geojson&steps=true${altParam}${straightParam}${radiusesParam}`
+      `https://routing.openstreetmap.de/routed-bike/route/v1/biking/${waypointsStr}?overview=full&geometries=geojson&steps=true${altParam}${straightParam}`,
+      `https://routing.openstreetmap.de/routed-car/route/v1/driving/${waypointsStr}?overview=full&geometries=geojson&steps=true${altParam}${straightParam}`,
+      `https://router.project-osrm.org/route/v1/driving/${waypointsStr}?overview=full&geometries=geojson&steps=true${altParam}${straightParam}`
     ];
 
     for (const url of endpoints) {
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 3000);
+        const timeoutId = setTimeout(() => controller.abort(), 3500);
         const res = await fetch(url, { signal: controller.signal });
         clearTimeout(timeoutId);
 
