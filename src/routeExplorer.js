@@ -215,13 +215,13 @@ export class RouteExplorerEngine {
     const route4Raw = raw4 || raw1;
     const route5Raw = raw5 || raw1;
 
-    // Palette colori Blu, Oro e Nero ad alto contrasto per i tracciati
+    // Palette colori Pastello Soft (Blu, Oro, Sky, Yellow)
     const routes = await Promise.all([
-      this.buildRouteObject('opt-1', 'Arteria Principale Diretta (OSRM)', '#2563EB', route1Raw, startCoords, endCoords, 'Strada Principale', routeMode),
-      this.buildRouteObject('opt-2', 'Variante Secondaria Vicinale', '#D4AF37', route2Raw, startCoords, endCoords, 'Strade Vicinali', routeMode),
-      this.buildRouteObject('opt-3', 'Percorso Collinare & Salite', '#60A5FA', route3Raw, startCoords, endCoords, 'Salita & Tornanti', routeMode),
-      this.buildRouteObject('opt-4', 'Tracciato Panoramico Esterno', '#F59E0B', route4Raw, startCoords, endCoords, 'Provinciali Panoramiche', routeMode),
-      this.buildRouteObject('opt-5', 'Giro Esteso Fondo Pro', '#EAB308', route5Raw, startCoords, endCoords, 'Percorso Lungo', routeMode)
+      this.buildRouteObject('opt-1', 'Arteria Principale Diretta (OSRM)', '#5B8DEF', route1Raw, startCoords, endCoords, 'Strada Principale', routeMode),
+      this.buildRouteObject('opt-2', 'Variante Secondaria Vicinale', '#E5C365', route2Raw, startCoords, endCoords, 'Strade Vicinali', routeMode),
+      this.buildRouteObject('opt-3', 'Percorso Collinare & Salite', '#8BB4F8', route3Raw, startCoords, endCoords, 'Salita & Tornanti', routeMode),
+      this.buildRouteObject('opt-4', 'Tracciato Panoramico Esterno', '#F6D365', route4Raw, startCoords, endCoords, 'Provinciali Panoramiche', routeMode),
+      this.buildRouteObject('opt-5', 'Giro Esteso Fondo Pro', '#FDE047', route5Raw, startCoords, endCoords, 'Percorso Lungo', routeMode)
     ]);
 
     return routes;

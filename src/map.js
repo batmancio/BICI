@@ -111,14 +111,14 @@ export class MapManager {
 
     const startIcon = L.divIcon({
       className: 'custom-map-icon start-icon',
-      html: `<div style="background: #10b981; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 2px solid #D4AF37; box-shadow: 0 0 10px rgba(212, 175, 55, 0.6);"><i class="fa-solid fa-play" style="font-size: 11px; margin-left: 2px;"></i></div>`,
+      html: `<div style="background: #6EE7B7; color: #181B22; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 2.5px solid #E5C365; box-shadow: 0 0 10px rgba(229, 195, 101, 0.6);"><i class="fa-solid fa-play" style="font-size: 11px; margin-left: 2px;"></i></div>`,
       iconSize: [28, 28],
       iconAnchor: [14, 14]
     });
 
     const endIcon = L.divIcon({
       className: 'custom-map-icon end-icon',
-      html: `<div style="background: #ef4444; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 2px solid #D4AF37; box-shadow: 0 0 10px rgba(212, 175, 55, 0.6);"><i class="fa-solid fa-flag-checkered" style="font-size: 12px;"></i></div>`,
+      html: `<div style="background: #FCA5A5; color: #181B22; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 2.5px solid #E5C365; box-shadow: 0 0 10px rgba(229, 195, 101, 0.6);"><i class="fa-solid fa-flag-checkered" style="font-size: 12px;"></i></div>`,
       iconSize: [28, 28],
       iconAnchor: [14, 14]
     });
@@ -132,7 +132,7 @@ export class MapManager {
       waypoints.forEach((wp, idx) => {
         const wpIcon = L.divIcon({
           className: 'custom-map-icon waypoint-icon',
-          html: `<div style="background: #2563EB; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 11px; border: 2px solid #D4AF37; box-shadow: 0 0 8px rgba(37, 99, 235, 0.6);">${idx + 1}</div>`,
+          html: `<div style="background: #5B8DEF; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 11px; border: 2px solid #E5C365; box-shadow: 0 0 8px rgba(91, 141, 239, 0.6);">${idx + 1}</div>`,
           iconSize: [24, 24],
           iconAnchor: [12, 12]
         });
@@ -233,11 +233,11 @@ export class MapManager {
   }
 
   getSlopeColor(grade) {
-    if (grade < 3) return '#10b981';      // Emerald Mint (<3%)
-    if (grade < 6) return '#38bdf8';      // Azure Blue (3-6%)
-    if (grade < 9) return '#f59e0b';      // Amber Gold (6-9%)
-    if (grade < 12) return '#f97316';     // Vivid Orange (9-12%)
-    return '#ef4444';                     // Crimson Red (>12%)
+    if (grade < 3) return '#6EE7B7';      // Pastel Mint Green (<3%)
+    if (grade < 6) return '#7DD3FC';      // Pastel Azure Blue (3-6%)
+    if (grade < 9) return '#FDE047';      // Pastel Yellow Gold (6-9%)
+    if (grade < 12) return '#FDBA74';     // Pastel Soft Peach Orange (9-12%)
+    return '#FCA5A5';                     // Pastel Rose Red (>12%)
   }
 
   fitBoundsToRoutes() {
@@ -250,7 +250,7 @@ export class MapManager {
     if (!this.hoverMarker) {
       const hoverIcon = L.divIcon({
         className: 'hover-point-icon',
-        html: `<div style="background: #D4AF37; width: 14px; height: 14px; border-radius: 50%; border: 2.5px solid #2563EB; box-shadow: 0 0 10px rgba(212,175,55,0.8);"></div>`,
+        html: `<div style="background: #E5C365; width: 14px; height: 14px; border-radius: 50%; border: 2.5px solid #5B8DEF; box-shadow: 0 0 10px rgba(229,195,101,0.8);"></div>`,
         iconSize: [14, 14],
         iconAnchor: [7, 7]
       });

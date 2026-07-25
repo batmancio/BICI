@@ -6,44 +6,44 @@
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
 :root {
-  /* Dark Luxury Palette: Black, Blue, Gold */
-  --bg-main: #0B0E14;          /* Deep Onyx Black */
-  --bg-sidebar: #121722;       /* Slate Dark Surface */
-  --bg-header: #0E121B;        /* Header Surface */
-  --bg-card: #171E2D;          /* Dark Card Surface */
-  --bg-card-hover: #21293B;    /* Card Hover Surface */
-  --bg-input: #161D2B;         /* Input Surface */
-  --bg-pill: #1E2738;
-  --bg-pill-active: #D4AF37;   /* Gold Active */
+  /* Soft Pastel Dark Palette: Pastel Blue, Pastel Gold, Soft Charcoal */
+  --bg-main: #181B22;          /* Soft Dark Charcoal */
+  --bg-sidebar: #202430;       /* Soft Slate Surface */
+  --bg-header: #1B1E28;        /* Header Surface */
+  --bg-card: #262B38;          /* Soft Card Surface */
+  --bg-card-hover: #303747;    /* Card Hover Surface */
+  --bg-input: #292E3C;         /* Soft Input Surface */
+  --bg-pill: #303747;
+  --bg-pill-active: #E5C365;   /* Pastel Gold Active */
   
-  --border-color: #242E42;     /* Crisp Dark Border */
-  --border-light: #334155;
-  --border-focus: #D4AF37;     /* Gold Focus */
+  --border-color: #343B4E;     /* Soft Pastel Border */
+  --border-light: #48526B;
+  --border-focus: #E5C365;     /* Pastel Gold Focus */
   
-  /* Brand & Accent: Blue & Gold */
-  --brand-primary: #2563EB;    /* Royal Blue Primary Accent */
-  --brand-primary-hover: #1D4ED8;
-  --brand-accent: #60A5FA;     /* Electric Sky Blue */
-  --brand-gold: #D4AF37;       /* Metallic Gold */
-  --brand-gold-hover: #B89628;
-  --brand-gold-light: rgba(212, 175, 55, 0.12);
+  /* Brand & Accent: Pastel Blue & Pastel Gold */
+  --brand-primary: #5B8DEF;    /* Soft Pastel Blue Primary Accent */
+  --brand-primary-hover: #4878D9;
+  --brand-accent: #8BB4F8;     /* Light Sky Pastel Blue */
+  --brand-gold: #E5C365;       /* Soft Pastel Gold */
+  --brand-gold-hover: #D4AF4D;
+  --brand-gold-light: rgba(229, 195, 101, 0.15);
   
-  /* Technical Slope Colors - Adapted for Dark Contrast */
-  --slope-flat: #10B981;       /* Emerald Green <3% */
-  --slope-mild: #38BDF8;       /* Azure Blue 3-6% */
-  --slope-mod: #F59E0B;        /* Amber Gold 6-9% */
-  --slope-steep: #F97316;      /* Orange 9-12% */
-  --slope-wall: #EF4444;       /* Crimson Red >12% */
+  /* Technical Slope Colors - Soft Pastel Tones */
+  --slope-flat: #6EE7B7;       /* Pastel Mint Green <3% */
+  --slope-mild: #7DD3FC;       /* Pastel Sky Blue 3-6% */
+  --slope-mod: #FDE047;        /* Pastel Yellow Gold 6-9% */
+  --slope-steep: #FDBA74;      /* Pastel Peach Orange 9-12% */
+  --slope-wall: #FCA5A5;       /* Pastel Rose Coral >12% */
 
   /* High-Contrast Technical Typography */
-  --text-main: #F8FAFC;        /* Crisp Light Slate / White */
-  --text-muted: #94A3B8;       /* Muted Slate Text */
-  --text-dim: #64748B;         /* Dim Slate Text */
+  --text-main: #F1F5F9;        /* Crisp Light Slate */
+  --text-muted: #A0AEC0;       /* Soft Muted Text */
+  --text-dim: #718096;         /* Dim Slate Text */
 
   /* Shadow & Elevation System */
-  --shadow-sm: 0 2px 5px rgba(0,0,0,0.4);
-  --shadow-md: 0 4px 14px rgba(0,0,0,0.6);
-  --shadow-lg: 0 10px 30px rgba(0,0,0,0.8);
+  --shadow-sm: 0 2px 6px rgba(0,0,0,0.25);
+  --shadow-md: 0 4px 14px rgba(0,0,0,0.35);
+  --shadow-lg: 0 10px 28px rgba(0,0,0,0.45);
   
   /* Geometry & Typography */
   --radius-xs: 4px;
@@ -164,10 +164,10 @@ body {
 }
 
 .nav-btn.active {
-  background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
+  background: linear-gradient(135deg, #5B8DEF 0%, #4878D9 100%);
   color: #FFFFFF;
   border-color: var(--brand-gold);
-  box-shadow: 0 2px 10px rgba(37, 99, 235, 0.4);
+  box-shadow: 0 2px 10px rgba(91, 141, 239, 0.35);
 }
 
 .header-actions {
@@ -191,14 +191,14 @@ body {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
+  background: linear-gradient(135deg, #5B8DEF 0%, #4878D9 100%);
   color: #FFFFFF;
   border-color: var(--brand-accent);
-  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.4);
+  box-shadow: 0 2px 10px rgba(91, 141, 239, 0.35);
 }
 
 .btn-primary:hover {
-  background: linear-gradient(135deg, #1D4ED8 0%, #1E40AF 100%);
+  background: linear-gradient(135deg, #4878D9 0%, #3B67C0 100%);
   border-color: var(--brand-gold);
 }
 
@@ -483,8 +483,8 @@ body {
 .spec-card.selected {
   border: 1px solid var(--brand-gold);
   border-left: 4px solid var(--brand-gold);
-  background: linear-gradient(90deg, rgba(212, 175, 55, 0.1) 0%, var(--bg-card) 100%);
-  box-shadow: 0 4px 16px rgba(212, 175, 55, 0.18);
+  background: linear-gradient(90deg, rgba(229, 195, 101, 0.12) 0%, var(--bg-card) 100%);
+  box-shadow: 0 4px 16px rgba(229, 195, 101, 0.18);
 }
 
 .spec-card-header {

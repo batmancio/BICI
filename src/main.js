@@ -96,12 +96,7 @@ function initApp() {
   let currentRouteMode = 'oneway';
   let clickState = 'start';
 
-  const btnCalculateRoutes = document.getElementById('btnCalculateRoutes');
   const routeCardsContainer = document.getElementById('routeCardsContainer');
-  const inputStart = document.getElementById('inputStart');
-  const inputEnd = document.getElementById('inputEnd');
-  const startAutocomplete = document.getElementById('startAutocomplete');
-  const endAutocomplete = document.getElementById('endAutocomplete');
   const btnExportGpx = document.getElementById('btnExportGpx');
   const btnQuickUpload = document.getElementById('btnQuickUpload');
   const fileInput = document.getElementById('fileInput');
@@ -130,10 +125,6 @@ function initApp() {
       mapManager.refreshMapSize();
     });
   });
-
-  // Setup Autocomplete per Input Partenza & Arrivo (Istantaneo da 1 carattere + Arricchimento online)
-  setupAutocomplete(inputStart, startAutocomplete);
-  setupAutocomplete(inputEnd, endAutocomplete);
 
   function setupAutocomplete(inputElem, dropdownElem) {
     if (!inputElem || !dropdownElem) return;
@@ -234,9 +225,6 @@ function initApp() {
     });
   }
 
-  let customWaypoints = [];
-  let currentRouteMode = 'oneway';
-
   // Floating Search Overlay Elements
   const floatingSearchOverlay = document.getElementById('floatingSearchOverlay');
   const floatingInputStart = document.getElementById('floatingInputStart');
@@ -245,24 +233,9 @@ function initApp() {
   const floatingEndAutocomplete = document.getElementById('floatingEndAutocomplete');
   const btnFloatingCalculate = document.getElementById('btnFloatingCalculate');
 
-  // Setup Autocomplete per Floating Inputs
+  // Setup Autocomplete per Floating Inputs (Unici input dell'app)
   setupAutocomplete(floatingInputStart, floatingStartAutocomplete);
   setupAutocomplete(floatingInputEnd, floatingEndAutocomplete);
-
-  // Sincronizzazione Input tra Floating Overlay e Sidebar
-  function syncInputs(source, target) {
-    if (!source || !target) return;
-    source.addEventListener('input', () => {
-      target.value = source.value;
-      if (source.dataset.lat) target.dataset.lat = source.dataset.lat;
-      if (source.dataset.lng) target.dataset.lng = source.dataset.lng;
-    });
-  }
-
-  syncInputs(floatingInputStart, inputStart);
-  syncInputs(inputStart, floatingInputStart);
-  syncInputs(floatingInputEnd, inputEnd);
-  syncInputs(inputEnd, floatingInputEnd);
 
   // Sync Selettori Modalità (Solo Andata, A/R, Anello)
   const modeBtns = document.querySelectorAll('.mode-btn');
@@ -277,23 +250,19 @@ function initApp() {
         b.style.color = isMatch ? '#ffffff' : 'var(--text-muted)';
       });
 
-      const updateInputEndState = (inp) => {
-        if (!inp) return;
+      if (floatingInputEnd) {
         if (currentRouteMode === 'loop') {
-          inp.placeholder = "Giro ad Anello (coincide con la partenza)";
-          inp.value = (inputStart.value || floatingInputStart?.value) ? `${inputStart.value || floatingInputStart?.value} (Anello)` : '';
-          inp.disabled = true;
+          floatingInputEnd.placeholder = "Giro ad Anello (coincide con la partenza)";
+          floatingInputEnd.value = floatingInputStart?.value ? `${floatingInputStart.value} (Anello)` : '';
+          floatingInputEnd.disabled = true;
         } else {
-          inp.placeholder = "Scrivi la destinazione...";
-          if (inp.value.includes('(Anello)')) inp.value = '';
-          inp.disabled = false;
+          floatingInputEnd.placeholder = "Scrivi la destinazione...";
+          if (floatingInputEnd.value.includes('(Anello)')) floatingInputEnd.value = '';
+          floatingInputEnd.disabled = false;
         }
-      };
+      }
 
-      updateInputEndState(inputEnd);
-      updateInputEndState(floatingInputEnd);
-
-      if (inputStart.value.trim() || floatingInputStart?.value.trim()) {
+      if (floatingInputStart?.value.trim()) {
         handleCalculateRoutes();
       }
     });
@@ -301,8 +270,6 @@ function initApp() {
 
   if (btnFloatingCalculate) {
     btnFloatingCalculate.addEventListener('click', () => {
-      if (floatingInputStart?.value) inputStart.value = floatingInputStart.value;
-      if (floatingInputEnd?.value) inputEnd.value = floatingInputEnd.value;
       customWaypoints = [];
       clickState = 'start';
       handleCalculateRoutes();
@@ -311,9 +278,8 @@ function initApp() {
 
   async function handleCalculateRoutes() {
     try {
-      const startVal = inputStart.value.trim() || floatingInputStart?.value.trim() || '';
-      const endVal = (currentRouteMode === 'loop') ? startVal : (inputEnd.value.trim() || floatingInputEnd?.value.trim() || '');
-      const targetKm = parseInt(sliderTargetKm?.value || '45', 10);
+      const startVal = floatingInputStart?.value.trim() || '';
+      const endVal = (currentRouteMode === 'loop') ? startVal : (floatingInputEnd?.value.trim() || '');
 
       if (!startVal || (currentRouteMode !== 'loop' && !endVal)) {
         routeCardsContainer.innerHTML = `
@@ -321,29 +287,21 @@ function initApp() {
             <i class="fa-solid fa-map-location-dot" style="font-size: 1.8rem; color: var(--brand-primary); margin-bottom: 8px;"></i>
             <div style="font-weight: 700; font-size: 0.88rem; color: var(--text-main); margin-bottom: 4px;">Scegli l'itinerario ciclistico</div>
             <div style="font-size: 0.76rem; line-height: 1.4; color: var(--text-muted);">
-              Inserisci Partenza e Arrivo per elaborare le opzioni di percorso.
+              Inserisci Partenza e Arrivo nel pannello per elaborare le opzioni di percorso.
             </div>
           </div>
         `;
         return;
       }
 
-      // Copia valori se necessario
-      inputStart.value = startVal;
-      if (currentRouteMode !== 'loop') inputEnd.value = endVal;
-
       let startCoords = null;
       let endCoords = null;
 
-      if (inputStart?.dataset.lat && inputStart?.dataset.lng) {
-        startCoords = [parseFloat(inputStart.dataset.lat), parseFloat(inputStart.dataset.lng)];
-      } else if (floatingInputStart?.dataset.lat && floatingInputStart?.dataset.lng) {
+      if (floatingInputStart?.dataset.lat && floatingInputStart?.dataset.lng) {
         startCoords = [parseFloat(floatingInputStart.dataset.lat), parseFloat(floatingInputStart.dataset.lng)];
       }
 
-      if (inputEnd?.dataset.lat && inputEnd?.dataset.lng && currentRouteMode !== 'loop') {
-        endCoords = [parseFloat(inputEnd.dataset.lat), parseFloat(inputEnd.dataset.lng)];
-      } else if (floatingInputEnd?.dataset.lat && floatingInputEnd?.dataset.lng && currentRouteMode !== 'loop') {
+      if (floatingInputEnd?.dataset.lat && floatingInputEnd?.dataset.lng && currentRouteMode !== 'loop') {
         endCoords = [parseFloat(floatingInputEnd.dataset.lat), parseFloat(floatingInputEnd.dataset.lng)];
       }
 
@@ -355,15 +313,12 @@ function initApp() {
         </div>
       `;
 
-      activeRoutes = await explorerEngine.discoverRoutes(startVal, endVal, targetKm, startCoords, endCoords, customWaypoints, currentRouteMode);
+      activeRoutes = await explorerEngine.discoverRoutes(startVal, endVal, 45, startCoords, endCoords, customWaypoints, currentRouteMode);
       renderTechnicalSpecCards(activeRoutes);
 
-      // APERTURA AUTOMATICA DELLA SIDEBAR E NASCONDIMENTO FLOATING OVERLAY
+      // APERTURA AUTOMATICA DELLA SIDEBAR PER MOSTRARE LE OPZIONI TROVATE
       if (appSidebar) {
         appSidebar.classList.remove('collapsed');
-      }
-      if (floatingSearchOverlay) {
-        floatingSearchOverlay.classList.add('hidden');
       }
 
       mapManager.clearRoutes();
@@ -401,14 +356,18 @@ function initApp() {
   mapManager.onMapClick((latLng) => {
     const formattedCoord = `${latLng.lat.toFixed(4)}, ${latLng.lng.toFixed(4)}`;
     if (clickState === 'start') {
-      inputStart.value = formattedCoord;
-      inputStart.dataset.lat = latLng.lat;
-      inputStart.dataset.lng = latLng.lng;
+      if (floatingInputStart) {
+        floatingInputStart.value = formattedCoord;
+        floatingInputStart.dataset.lat = latLng.lat;
+        floatingInputStart.dataset.lng = latLng.lng;
+      }
       clickState = 'end';
     } else if (clickState === 'end') {
-      inputEnd.value = formattedCoord;
-      inputEnd.dataset.lat = latLng.lat;
-      inputEnd.dataset.lng = latLng.lng;
+      if (floatingInputEnd) {
+        floatingInputEnd.value = formattedCoord;
+        floatingInputEnd.dataset.lat = latLng.lat;
+        floatingInputEnd.dataset.lng = latLng.lng;
+      }
       clickState = 'waypoint';
     } else {
       customWaypoints.push([latLng.lat, latLng.lng]);
@@ -416,11 +375,13 @@ function initApp() {
     handleCalculateRoutes();
   });
 
-  btnCalculateRoutes.addEventListener('click', () => {
-    customWaypoints = [];
-    clickState = 'start';
-    handleCalculateRoutes();
-  });
+  if (btnCalculateRoutes) {
+    btnCalculateRoutes.addEventListener('click', () => {
+      customWaypoints = [];
+      clickState = 'start';
+      handleCalculateRoutes();
+    });
+  }
 
   const routeDetailModal = document.getElementById('routeDetailModal');
   const btnCloseModal = document.getElementById('btnCloseModal');
@@ -633,30 +594,41 @@ function initApp() {
     });
   });
 
-  btnExportGpx.addEventListener('click', () => {
-    plannerManager.exportToGpx();
-  });
+  if (btnExportGpx) {
+    btnExportGpx.addEventListener('click', () => {
+      plannerManager.exportToGpx();
+    });
+  }
 
-  btnQuickUpload.addEventListener('click', () => fileInput.click());
-  dropZone.addEventListener('click', () => fileInput.click());
+  if (btnQuickUpload && fileInput) {
+    btnQuickUpload.addEventListener('click', () => fileInput.click());
+  }
 
-  fileInput.addEventListener('change', (e) => {
-    if (e.target.files.length > 0) {
-      processWorkoutFile(e.target.files[0]);
-    }
-  });
+  if (dropZone && fileInput) {
+    dropZone.addEventListener('click', () => fileInput.click());
+  }
 
-  dropZone.addEventListener('dragover', (e) => {
-    e.preventDefault();
-    dropZone.style.borderColor = 'var(--brand-gold)';
-  });
+  if (fileInput) {
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files.length > 0) {
+        processWorkoutFile(e.target.files[0]);
+      }
+    });
+  }
 
-  dropZone.addEventListener('drop', (e) => {
-    e.preventDefault();
-    if (e.dataTransfer.files.length > 0) {
-      processWorkoutFile(e.dataTransfer.files[0]);
-    }
-  });
+  if (dropZone) {
+    dropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropZone.style.borderColor = 'var(--brand-gold)';
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      if (e.dataTransfer.files.length > 0) {
+        processWorkoutFile(e.dataTransfer.files[0]);
+      }
+    });
+  }
 
   async function processWorkoutFile(file) {
     try {
@@ -674,10 +646,10 @@ function initApp() {
       document.getElementById('resEffort').textContent = metrics.effortRating;
 
       mapManager.clearRoutes();
-      mapManager.renderRoutePolyline(metrics.coords, '#2563EB', true, 'user-workout');
+      mapManager.renderRoutePolyline(metrics.coords, '#5B8DEF', true, 'user-workout');
       mapManager.fitBoundsToRoutes();
 
-      analyticsManager.renderElevationChart(elevationCanvas, metrics.elevationProfile, '#2563EB');
+      analyticsManager.renderElevationChart(elevationCanvas, metrics.elevationProfile, '#5B8DEF');
 
       document.querySelector('.nav-btn[data-tab="analysis"]').click();
 
@@ -731,7 +703,9 @@ function initApp() {
     }, 280);
   };
 
-  btnToggleChart.addEventListener('click', toggleChartPanel);
+  if (btnToggleChart) {
+    btnToggleChart.addEventListener('click', toggleChartPanel);
+  }
 
   // Cliccando sull'intestazione quando il pannello è minimizzato lo riapre
   const chartHeader = elevationPanel.querySelector('.chart-header');
@@ -743,22 +717,11 @@ function initApp() {
     });
   }
 
-  function syncOverlayVisibility() {
-    if (appSidebar && floatingSearchOverlay) {
-      const isCollapsed = appSidebar.classList.contains('collapsed');
-      floatingSearchOverlay.classList.toggle('hidden', !isCollapsed);
-    }
-  }
-
-  // Sincronizza stato iniziale all'avvio
-  syncOverlayVisibility();
-
   const btnToggleSidebar = document.getElementById('btnToggleSidebar');
   const appSidebar = document.getElementById('appSidebar');
   if (btnToggleSidebar && appSidebar) {
     btnToggleSidebar.addEventListener('click', () => {
       appSidebar.classList.toggle('collapsed');
-      syncOverlayVisibility();
       setTimeout(() => mapManager.refreshMapSize(), 230);
     });
   }

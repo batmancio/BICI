@@ -67,42 +67,8 @@
         <!-- TAB 1: ESPLORATORE ROTTE & SCHEDE TECNICHE -->
         <div id="tabExplorer" class="tab-pane active">
           
-          <div class="section-title">
-            <span>Calcolo Itinerari Stradali</span>
-          </div>
-
-          <!-- Selettore Modalità di Percorso -->
-          <div class="route-mode-selector" style="display: flex; gap: 4px; background: var(--bg-card); padding: 4px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); margin-bottom: 10px;">
-            <button class="mode-btn active" data-mode="oneway" style="flex: 1; padding: 6px 4px; font-size: 0.74rem; font-weight: 600; border-radius: var(--radius-xs); border: none; background: var(--bg-pill-active); color: #fff; cursor: pointer;">
-              <i class="fa-solid fa-arrow-right"></i> Solo Andata
-            </button>
-            <button class="mode-btn" data-mode="roundtrip" style="flex: 1; padding: 6px 4px; font-size: 0.74rem; font-weight: 600; border-radius: var(--radius-xs); border: none; background: transparent; color: var(--text-muted); cursor: pointer;">
-              <i class="fa-solid fa-arrows-left-right"></i> A/R
-            </button>
-            <button class="mode-btn" data-mode="loop" style="flex: 1; padding: 6px 4px; font-size: 0.74rem; font-weight: 600; border-radius: var(--radius-xs); border: none; background: transparent; color: var(--text-muted); cursor: pointer;">
-              <i class="fa-solid fa-rotate-right"></i> Anello (A→A)
-            </button>
-          </div>
-
-          <!-- Input Punti A e B con Autocomplete -->
-          <div class="route-inputs-card">
-            <div class="input-group">
-              <label><i class="fa-solid fa-location-dot" style="color: var(--brand-primary);"></i> Partenza (A)</label>
-              <input type="text" id="inputStart" class="input-field" placeholder="Scrivi la città o l'indirizzo..." value="" autocomplete="off">
-              <div id="startAutocomplete" class="autocomplete-dropdown"></div>
-            </div>
-            <div class="input-group">
-              <label><i class="fa-solid fa-flag-checkered" style="color: #ef4444;"></i> Destinazione (B)</label>
-              <input type="text" id="inputEnd" class="input-field" placeholder="Scrivi la destinazione..." value="" autocomplete="off">
-              <div id="endAutocomplete" class="autocomplete-dropdown"></div>
-            </div>
-            <button id="btnCalculateRoutes" class="btn btn-primary" style="width: 100%; justify-content: center; margin-top: 4px;">
-              <i class="fa-solid fa-compass"></i> Calcola Percorsi Stradali
-            </button>
-          </div>
-
           <!-- Filtri e Ordinamento Schede -->
-          <div style="margin-top: 14px;">
+          <div>
             <div class="section-title">
               <span>Opzioni Trovate</span>
               <span id="routeCountBadge" class="badge badge-low-traffic">Pronto</span>
